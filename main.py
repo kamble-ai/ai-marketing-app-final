@@ -2,13 +2,16 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 from groq import Groq
 from pymongo import MongoClient
 from passlib.context import CryptContext
 from jose import jwt
+
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+
 
 # =========================
 # ENV
@@ -22,10 +25,12 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not MONGO_URI or not SECRET_KEY or not GROQ_API_KEY:
     raise Exception("❌ Missing ENV variables")
 
+
 # =========================
 # INIT CLIENTS
 # =========================
 client = Groq(api_key=GROQ_API_KEY)
+
 
 # =========================
 # DB (MongoDB)
@@ -44,13 +49,14 @@ except Exception as e:
     print("❌ MongoDB Connection Failed:", e)
     raise Exception("Database connection failed")
 
+
 # =========================
-# PASSWORD HASH (FIXED)
+# PASSWORD HASH
 # =========================
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password):
-    return pwd_context.hash(password[:72])  # bcrypt safe limit
+    return pwd_context.hash(password[:72])
 
 def verify_password(password, hashed):
     try:
@@ -58,6 +64,7 @@ def verify_password(password, hashed):
     except Exception as e:
         print("❌ Password verify error:", e)
         return False
+
 
 # =========================
 # JWT
@@ -71,11 +78,13 @@ def create_token(data: dict):
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=["HS256"])
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         return payload["username"]
     except Exception as e:
         print("❌ Token Error:", e)
         raise HTTPException(status_code=401, detail="Invalid token")
+
 
 # =========================
 # APP
@@ -90,6 +99,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # =========================
 # AI FUNCTION
 # =========================
@@ -100,20 +110,23 @@ def ai_generate(prompt):
             messages=[{"role": "user", "content": prompt}]
         )
         return response.choices[0].message.content
+
     except Exception as e:
         print("❌ AI Error:", e)
-        return "❌ AI Error"
+        return None
+
 
 # =========================
-# AUTH (FINAL FIXED)
+# AUTH ROUTES
 # =========================
 @app.post("/signup")
 def signup(data: dict):
     try:
-        print("📩 Signup Request:", data)
-
         if data.get("password") != data.get("confirm_password"):
             return {"error": "Passwords do not match"}
+
+        if users_col.find_one({"username": data.get("username")}):
+            return {"error": "User already exists"}
 
         users_col.insert_one({
             "first_name": data.get("first_name"),
@@ -127,19 +140,13 @@ def signup(data: dict):
         return {"message": "Account created successfully"}
 
     except Exception as e:
-        print("❌ REAL SIGNUP ERROR:", str(e))
-
-        if "duplicate key" in str(e).lower():
-            return {"error": "User already exists"}
-
+        print("❌ SIGNUP ERROR:", e)
         return {"error": str(e)}
 
 
 @app.post("/login")
 def login(data: dict):
     try:
-        print("📩 Login Request:", data)
-
         user = users_col.find_one({"username": data.get("username")})
 
         if not user:
@@ -159,8 +166,9 @@ def login(data: dict):
         print("❌ LOGIN ERROR:", e)
         return {"error": "Login failed"}
 
+
 # =========================
-# AGENTS
+# PROMPT BUILDER
 # =========================
 def build_prompt(platform, product, audience):
     return f"""
@@ -169,17 +177,22 @@ Create a HIGH-CONVERTING {platform} marketing plan.
 Product: {product}
 Audience: {audience}
 
-Give:
+Give structured output:
+
 1. Strategy
 2. Growth Plan
 3. Do's & Don'ts
 4. 5 Captions
 5. Hashtags
 6. CTA
+
+Keep it clean, professional, and well-structured.
 """
+
 
 def run_agent(platform, product, audience):
     return ai_generate(build_prompt(platform, product, audience))
+
 
 # =========================
 # GENERATE (SECURE)
@@ -191,33 +204,49 @@ def generate(data: dict, username: str = Depends(verify_token)):
         audience = data.get("audience")
         platform = data.get("platform")
 
+        if not product or not audience:
+            return {"error": "Missing input"}
+
         if platform == "all":
             platforms = [
                 "Instagram", "Facebook Ads",
                 "Google Ads", "YouTube Shorts", "YouTube Long"
             ]
-            result = "\n\n".join([
-                run_agent(p, product, audience) for p in platforms
-            ])
+
+            results = []
+            for p in platforms:
+                res = run_agent(p, product, audience)
+                if not res:
+                    return {"error": f"AI failed for {p}"}
+                results.append(res)
+
+            result = "\n\n".join(results)
+
         else:
             result = run_agent(platform, product, audience)
 
+            if not result:
+                return {"error": "AI generation failed"}
+
+        # SAVE HISTORY
         history_col.insert_one({
             "username": username,
             "product": product,
             "audience": audience,
             "platform": platform,
-            "result": result
+            "result": result,
+            "created_at": datetime.utcnow()
         })
 
         return {"campaign": result}
 
     except Exception as e:
         print("❌ GENERATE ERROR:", e)
-        return {"error": "Generate failed"}
+        return {"error": str(e)}
+
 
 # =========================
-# HISTORY (SECURE)
+# HISTORY
 # =========================
 @app.get("/history")
 def history(username: str = Depends(verify_token)):
@@ -231,7 +260,8 @@ def history(username: str = Depends(verify_token)):
 
     except Exception as e:
         print("❌ HISTORY ERROR:", e)
-        return {"error": "History failed"}
+        return {"error": str(e)}
+
 
 # =========================
 # FRONTEND

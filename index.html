@@ -22,7 +22,7 @@ body {
     background:#020617;
     border-radius:12px;
     padding:15px;
-    height:420px;
+    height:400px;
     overflow-y:auto;
     display:flex;
     flex-direction:column;
@@ -33,7 +33,7 @@ body {
     padding:12px;
     margin:8px;
     border-radius:10px;
-    line-height:1.6;
+    line-height:1.5;
     white-space:pre-wrap;
 }
 
@@ -45,10 +45,6 @@ body {
 .ai {
     align-self:flex-start;
     background:#1e293b;
-}
-
-.input-box {
-    margin-top:10px;
 }
 
 input,select {
@@ -67,38 +63,10 @@ button {
     margin:5px;
 }
 
-.generate-btn {
-    background:#16a34a;
-    color:white;
-}
+.generate-btn { background:#16a34a; color:white; }
+.action-btn { background:#2563eb; color:white; }
 
-.action-btn {
-    background:#2563eb;
-    color:white;
-}
-
-.toolbar {
-    margin-top:10px;
-}
-
-/* FORMATTED OUTPUT */
-.formatted h2 {
-    text-align:center;
-    font-weight:bold;
-    margin-top:20px;
-}
-
-.formatted p {
-    margin:8px 0;
-}
-
-/* DIVIDER */
-.divider {
-    border: none;
-    border-top: 1px solid #cbd5f5;
-    margin: 15px 0 10px;
-    opacity: 0.5;
-}
+.toolbar { margin-top:10px; }
 </style>
 </head>
 
@@ -109,8 +77,6 @@ button {
 <h2>💬 AI Marketing Generator</h2>
 
 <div id="chat" class="chat-box"></div>
-
-<div class="input-box">
 
 <input id="product" placeholder="Enter Product">
 <input id="audience" placeholder="Enter Audience">
@@ -125,8 +91,6 @@ button {
 
 <button class="generate-btn" onclick="generate()">Generate</button>
 
-</div>
-
 <div class="toolbar">
 <button class="action-btn" onclick="copyText()">📋 Copy</button>
 <button class="action-btn" onclick="shareText()">🔗 Share</button>
@@ -139,66 +103,13 @@ button {
 
 let lastResponse = "";
 
-// 🔥 FORMAT CLEAN OUTPUT
-function formatResponse(text){
-
-    text = text.replace(/\*\*/g, "").replace(/\*/g, "");
-
-    const lines = text.split("\n").filter(l => l.trim() !== "");
-
-    let html = "<div class='formatted'>";
-    let section = 1;
-    let sub = 0;
-
-    lines.forEach(line => {
-
-        line = line.trim();
-
-        if(
-            line.toLowerCase().includes("strategy") ||
-            line.toLowerCase().includes("growth") ||
-            line.toLowerCase().includes("plan") ||
-            line.toLowerCase().includes("do") ||
-            line.toLowerCase().includes("don't") ||
-            line.toLowerCase().includes("caption") ||
-            line.toLowerCase().includes("hashtag")
-        ){
-            sub = 0;
-
-            html += `
-                <h2>${section}. ${line}</h2>
-                <hr class="divider">
-            `;
-
-            section++;
-        }
-        else{
-
-            const letter = String.fromCharCode(97 + sub);
-
-            html += `<p><b>${letter}.</b> ${line}</p>`;
-            sub++;
-        }
-
-    });
-
-    html += "</div>";
-    return html;
-}
-
 // ADD MESSAGE
-function addMessage(text, type, isHTML=false){
-
+function addMessage(text, type){
     const chat = document.getElementById("chat");
 
     const div = document.createElement("div");
     div.className = "msg " + type;
-
-    if(isHTML){
-        div.innerHTML = text;
-    } else {
-        div.innerText = text;
-    }
+    div.innerText = text;
 
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
@@ -207,14 +118,16 @@ function addMessage(text, type, isHTML=false){
 // GENERATE
 async function generate(){
 
+    const token = localStorage.getItem("token"); // 🔥 FIX
+
+    if(!token){
+        alert("Login required");
+        return;
+    }
+
     const productVal = product.value;
     const audienceVal = audience.value;
     const platformVal = platform.value;
-
-    if(!productVal || !audienceVal){
-        alert("Fill all fields");
-        return;
-    }
 
     addMessage(`Product: ${productVal}\nAudience: ${audienceVal}\nPlatform: ${platformVal}`, "user");
 
@@ -224,7 +137,8 @@ async function generate(){
         const res = await fetch("/generate",{
             method:"POST",
             headers:{
-                "Content-Type":"application/json"
+                "Content-Type":"application/json",
+                "Authorization": "Bearer " + token   // 🔥 FIX
             },
             body:JSON.stringify({
                 product:productVal,
@@ -239,50 +153,47 @@ async function generate(){
             if(el.innerText==="⏳ Generating...") el.remove();
         });
 
+        console.log("API:", d);
+
         if(d.campaign){
             lastResponse = d.campaign;
-            addMessage(formatResponse(d.campaign), "ai", true);
-        } else {
-            addMessage("❌ Error generating", "ai");
+            addMessage(d.campaign, "ai");
+        } 
+        else if(d.error){
+            addMessage("❌ " + d.error, "ai");
+        }
+        else if(d.detail){
+            addMessage("❌ " + d.detail, "ai");
+        }
+        else{
+            addMessage("❌ Unknown error", "ai");
         }
 
     }catch(err){
+        console.log(err);
         addMessage("❌ Server error", "ai");
     }
 }
 
 // COPY
 function copyText(){
-    if(!lastResponse){
-        alert("Generate first");
-        return;
-    }
-
+    if(!lastResponse) return alert("Generate first");
     navigator.clipboard.writeText(lastResponse);
     alert("Copied!");
 }
 
 // SHARE
 function shareText(){
-    if(!lastResponse){
-        alert("Generate first");
-        return;
-    }
-
-    const text = encodeURIComponent(lastResponse);
-    window.open(`https://wa.me/?text=${text}`, "_blank");
+    if(!lastResponse) return alert("Generate first");
+    window.open(`https://wa.me/?text=${encodeURIComponent(lastResponse)}`);
 }
 
 // PDF
 function downloadPDF(){
-
-    if(!lastResponse){
-        alert("Generate first");
-        return;
-    }
+    if(!lastResponse) return alert("Generate first");
 
     const element = document.createElement("div");
-    element.innerHTML = formatResponse(lastResponse);
+    element.innerText = lastResponse;
 
     html2pdf().from(element).save("marketing-plan.pdf");
 }
