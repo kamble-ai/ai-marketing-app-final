@@ -1,0 +1,2 @@
+# ai-marketing-campaign-generator-for-small-businesses
+Small businesses often struggle to create effective marketing strategies due to lack of expertise, time, and budget. This leads to poor online visibility and low customer engagement. Our AI Marketing Campaign Generator solves this problem by allowing users to input their product and target audience, and instantly receive a complete marketing plan i

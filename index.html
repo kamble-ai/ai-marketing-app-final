@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AI Marketing Generator</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: linear-gradient(135deg,#000,#0f172a);
+    color:white;
+    text-align:center;
+}
+
+.box {
+    background:white;
+    color:black;
+    padding:20px;
+    border-radius:10px;
+    max-width:450px;
+    margin:auto;
+}
+
+input,select {
+    width:90%;
+    padding:10px;
+    margin:10px;
+}
+
+button {
+    padding:10px;
+    background:green;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+
+button:hover {
+    opacity:0.9;
+}
+
+#result {
+    background:#f1f5f9;
+    padding:10px;
+    margin-top:10px;
+}
+
+.loading {
+    color:blue;
+    font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🚀 AI Marketing Generator</h1>
+
+<div class="box">
+
+<!-- SIGNUP -->
+<div id="signupPage">
+<h2>Signup</h2>
+
+<input id="firstName" placeholder="First Name">
+<input id="lastName" placeholder="Last Name">
+
+<select id="gender">
+<option>Male</option>
+<option>Female</option>
+</select>
+
+<input id="dob" type="date">
+
+<input id="signupUsername" placeholder="Username">
+<input id="signupPassword" type="password" placeholder="Password">
+<input id="confirmPassword" type="password" placeholder="Confirm Password">
+
+<button onclick="signup()">Signup</button>
+
+<p style="cursor:pointer;color:blue" onclick="showLogin()">Already signed? Login</p>
+</div>
+
+
+<!-- LOGIN -->
+<div id="loginPage" style="display:none">
+<h2>Login</h2>
+
+<input id="loginUsername" placeholder="Username">
+<input id="loginPassword" type="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<p style="cursor:pointer;color:blue" onclick="showSignup()">New user? Signup</p>
+</div>
+
+
+<!-- APP -->
+<div id="appPage" style="display:none">
+
+<h3>Welcome 👋</h3>
+
+<input id="product" placeholder="Product">
+<input id="audience" placeholder="Audience">
+
+<select id="platform">
+<option value="Instagram">Instagram</option>
+<option value="Facebook Ads">Facebook Ads</option>
+<option value="Google Ads">Google Ads</option>
+<option value="YouTube Shorts">YouTube Shorts</option>
+<option value="YouTube Long">YouTube Long</option>
+<option value="all">All</option>
+</select>
+
+<button onclick="generate()">Generate</button>
+<button onclick="loadHistory()">History</button>
+<button onclick="logout()">Logout</button>
+
+<div id="result"></div>
+<div id="history"></div>
+
+</div>
+
+</div>
+
+<script>
+
+// =========================
+// PAGE SWITCH
+// =========================
+function showSignup(){
+    signupPage.style.display="block";
+    loginPage.style.display="none";
+    appPage.style.display="none";
+}
+
+function showLogin(){
+    signupPage.style.display="none";
+    loginPage.style.display="block";
+    appPage.style.display="none";
+}
+
+function showApp(){
+    signupPage.style.display="none";
+    loginPage.style.display="none";
+    appPage.style.display="block";
+}
+
+// =========================
+// SIGNUP
+// =========================
+async function signup(){
+    try{
+        const res = await fetch("/signup",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+                first_name:firstName.value,
+                last_name:lastName.value,
+                gender:gender.value,
+                dob:dob.value,
+                username:signupUsername.value,
+                password:signupPassword.value,
+                confirm_password:confirmPassword.value
+            })
+        });
+
+        const d = await res.json();
+
+        alert(d.message || d.error || "Signup failed");
+
+        if(d.message){
+            showLogin();
+        }
+
+    }catch(err){
+        alert("❌ Signup error");
+        console.log(err);
+    }
+}
+
+// =========================
+// LOGIN (JWT)
+// =========================
+async function login(){
+    try{
+        const res = await fetch("/login",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+                username:loginUsername.value,
+                password:loginPassword.value
+            })
+        });
+
+        const d = await res.json();
+
+        if(d.token){
+            localStorage.setItem("token", d.token);
+            showApp();
+        } else {
+            alert(d.error || "Login failed");
+        }
+
+    }catch(err){
+        alert("❌ Login error");
+        console.log(err);
+    }
+}
+
+// =========================
+// GENERATE (SECURE)
+// =========================
+async function generate(){
+
+    const token = localStorage.getItem("token");
+
+    if(!token){
+        alert("Please login again");
+        return;
+    }
+
+    result.innerHTML = "<p class='loading'>⏳ Generating...</p>";
+
+    try{
+        const res = await fetch("/generate",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json",
+                "Authorization":"Bearer " + token
+            },
+            body:JSON.stringify({
+                product:product.value,
+                audience:audience.value,
+                platform:platform.value
+            })
+        });
+
+        const d = await res.json();
+
+        if(d.campaign){
+            result.innerText = d.campaign;
+        } else {
+            result.innerText = d.detail || "Error generating";
+        }
+
+    }catch(err){
+        result.innerText = "❌ Error";
+        console.log(err);
+    }
+}
+
+// =========================
+// HISTORY (SECURE)
+// =========================
+async function loadHistory(){
+
+    const token = localStorage.getItem("token");
+
+    try{
+        const res = await fetch("/history",{
+            headers:{
+                "Authorization":"Bearer " + token
+            }
+        });
+
+        const d = await res.json();
+
+        if(!d.history){
+            history.innerText = "No history";
+            return;
+        }
+
+        history.innerHTML = "<h3>History</h3>" +
+            d.history.map(h => `
+            <div style="border:1px solid #ccc;margin:10px;padding:10px">
+                <b>${h.platform}</b><br>
+                ${h.product} → ${h.audience}
+            </div>
+            `).join("");
+
+    }catch(err){
+        history.innerText = "❌ Error loading history";
+        console.log(err);
+    }
+}
+
+// =========================
+// LOGOUT
+// =========================
+function logout(){
+    localStorage.removeItem("token");
+    location.reload();
+}
+
+// =========================
+// AUTO LOAD
+// =========================
+window.onload = ()=>{
+    const token = localStorage.getItem("token");
+    if(token) showApp();
+    else showSignup();
+}
+
+</script>
+
+</body>
+</html>
