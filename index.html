@@ -3,395 +3,288 @@
 <head>
 <title>AI Marketing Generator</title>
 
-<!-- PDF LIBRARY -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
 body {
     font-family: 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg,#020617,#0f172a);
+    background:#0f172a;
     color:white;
-    text-align:center;
 }
 
-/* MAIN BOX */
-.box {
-    background:white;
-    color:black;
-    padding:25px;
-    border-radius:12px;
-    max-width:500px;
+.container {
+    max-width:800px;
     margin:auto;
-    box-shadow:0 10px 30px rgba(0,0,0,0.2);
+    padding:20px;
 }
 
-/* INPUTS */
-input,select {
-    width:90%;
+.chat-box {
+    background:#020617;
+    border-radius:12px;
+    padding:15px;
+    height:420px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+}
+
+.msg {
+    max-width:75%;
     padding:12px;
-    margin:10px;
-    border-radius:8px;
-    border:1px solid #ccc;
+    margin:8px;
+    border-radius:10px;
+    line-height:1.6;
+    white-space:pre-wrap;
 }
 
-/* BUTTONS */
-button {
-    padding:10px 15px;
+.user {
+    align-self:flex-end;
     background:#16a34a;
-    color:white;
+}
+
+.ai {
+    align-self:flex-start;
+    background:#1e293b;
+}
+
+.input-box {
+    margin-top:10px;
+}
+
+input,select {
+    width:100%;
+    padding:12px;
+    margin:8px 0;
+    border-radius:8px;
+    border:none;
+}
+
+button {
+    padding:10px;
     border:none;
     border-radius:6px;
     cursor:pointer;
     margin:5px;
 }
 
-button:hover {
-    opacity:0.9;
+.generate-btn {
+    background:#16a34a;
+    color:white;
 }
 
-/* RESULT */
-#result {
-    margin-top:20px;
-    text-align:left;
+.action-btn {
+    background:#2563eb;
+    color:white;
 }
 
-/* CARD */
-.card {
-    background:#ffffff;
-    border-radius:12px;
-    padding:18px;
-    margin-bottom:15px;
-    box-shadow:0 4px 12px rgba(0,0,0,0.08);
-    page-break-inside: avoid;
+.toolbar {
+    margin-top:10px;
 }
 
-.card h2 {
+/* FORMATTED OUTPUT */
+.formatted h2 {
     text-align:center;
     font-weight:bold;
-    color:#0f172a;
+    margin-top:20px;
 }
 
-.card p {
-    margin:10px 0;
-    line-height:1.6;
-    color:#334155;
+.formatted p {
+    margin:8px 0;
 }
 
-/* LOADING */
-.loading {
-    color:#2563eb;
-    font-weight:bold;
+/* DIVIDER */
+.divider {
+    border: none;
+    border-top: 1px solid #cbd5f5;
+    margin: 15px 0 10px;
+    opacity: 0.5;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🚀 AI Marketing Generator</h1>
+<div class="container">
 
-<div class="box">
+<h2>💬 AI Marketing Generator</h2>
 
-<!-- SIGNUP -->
-<div id="signupPage">
-<h2>Signup</h2>
+<div id="chat" class="chat-box"></div>
 
-<input id="firstName" placeholder="First Name">
-<input id="lastName" placeholder="Last Name">
+<div class="input-box">
 
-<select id="gender">
-<option>Male</option>
-<option>Female</option>
-</select>
-
-<input id="dob" type="date">
-
-<input id="signupUsername" placeholder="Username">
-<input id="signupPassword" type="password" placeholder="Password">
-<input id="confirmPassword" type="password" placeholder="Confirm Password">
-
-<button onclick="signup()">Signup</button>
-
-<p style="cursor:pointer;color:blue" onclick="showLogin()">Already signed? Login</p>
-</div>
-
-<!-- LOGIN -->
-<div id="loginPage" style="display:none">
-<h2>Login</h2>
-
-<input id="loginUsername" placeholder="Username">
-<input id="loginPassword" type="password" placeholder="Password">
-
-<button onclick="login()">Login</button>
-
-<p style="cursor:pointer;color:blue" onclick="showSignup()">New user? Signup</p>
-</div>
-
-<!-- APP -->
-<div id="appPage" style="display:none">
-
-<h3>Welcome 👋</h3>
-
-<input id="product" placeholder="Product">
-<input id="audience" placeholder="Audience">
+<input id="product" placeholder="Enter Product">
+<input id="audience" placeholder="Enter Audience">
 
 <select id="platform">
-<option value="Instagram">Instagram</option>
-<option value="Facebook Ads">Facebook Ads</option>
-<option value="Google Ads">Google Ads</option>
-<option value="YouTube Shorts">YouTube Shorts</option>
-<option value="YouTube Long">YouTube Long</option>
-<option value="all">All</option>
+<option>Instagram</option>
+<option>Facebook Ads</option>
+<option>Google Ads</option>
+<option>YouTube Shorts</option>
+<option>YouTube Long</option>
 </select>
 
-<button onclick="generate()">Generate</button>
-<button onclick="loadHistory()">History</button>
-<button onclick="logout()">Logout</button>
+<button class="generate-btn" onclick="generate()">Generate</button>
 
-<br>
+</div>
 
-<button onclick="downloadPDF()" style="background:#2563eb;">
-📄 Download PDF
-</button>
-
-<div id="result"></div>
-<div id="history"></div>
-
+<div class="toolbar">
+<button class="action-btn" onclick="copyText()">📋 Copy</button>
+<button class="action-btn" onclick="shareText()">🔗 Share</button>
+<button class="action-btn" onclick="downloadPDF()">📄 PDF</button>
 </div>
 
 </div>
 
 <script>
 
-// =========================
-// FORMAT RESPONSE (FINAL CLEAN)
-// =========================
+let lastResponse = "";
+
+// 🔥 FORMAT CLEAN OUTPUT
 function formatResponse(text){
 
-    let sections = text.split("###");
-    let html = "";
+    text = text.replace(/\*\*/g, "").replace(/\*/g, "");
 
-    sections.forEach(section=>{
-        if(section.trim() !== ""){
+    const lines = text.split("\n").filter(l => l.trim() !== "");
 
-            let lines = section.trim().split("\n");
-            let title = lines[0];
+    let html = "<div class='formatted'>";
+    let section = 1;
+    let sub = 0;
 
-            html += `<div class="card">`;
-            html += `<h2>${title}</h2>`;
+    lines.forEach(line => {
 
-            let count = 1;
+        line = line.trim();
 
-            lines.slice(1).forEach(line=>{
+        if(
+            line.toLowerCase().includes("strategy") ||
+            line.toLowerCase().includes("growth") ||
+            line.toLowerCase().includes("plan") ||
+            line.toLowerCase().includes("do") ||
+            line.toLowerCase().includes("don't") ||
+            line.toLowerCase().includes("caption") ||
+            line.toLowerCase().includes("hashtag")
+        ){
+            sub = 0;
 
-                let cleanLine = line
-                    .replace(/^\*\*|\*\*$/g, "")
-                    .replace(/^[-*+]\s*/, "")
-                    .trim();
+            html += `
+                <h2>${section}. ${line}</h2>
+                <hr class="divider">
+            `;
 
-                if(cleanLine !== ""){
-                    html += `<p><b>${count}.</b> ${cleanLine}</p>`;
-                    count++;
-                }
-            });
-
-            html += `</div>`;
+            section++;
         }
+        else{
+
+            const letter = String.fromCharCode(97 + sub);
+
+            html += `<p><b>${letter}.</b> ${line}</p>`;
+            sub++;
+        }
+
     });
 
+    html += "</div>";
     return html;
 }
 
-// =========================
-// PDF DOWNLOAD
-// =========================
-function downloadPDF(){
+// ADD MESSAGE
+function addMessage(text, type, isHTML=false){
 
-    const element = document.getElementById("result");
+    const chat = document.getElementById("chat");
 
-    if(!element.innerHTML){
-        alert("Generate content first!");
-        return;
+    const div = document.createElement("div");
+    div.className = "msg " + type;
+
+    if(isHTML){
+        div.innerHTML = text;
+    } else {
+        div.innerText = text;
     }
 
-    const opt = {
-        margin: 0.5,
-        filename: 'marketing-plan.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-    };
-
-    html2pdf().set(opt).from(element).save();
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
 }
 
-// =========================
-// PAGE SWITCH
-// =========================
-function showSignup(){
-    signupPage.style.display="block";
-    loginPage.style.display="none";
-    appPage.style.display="none";
-}
-
-function showLogin(){
-    signupPage.style.display="none";
-    loginPage.style.display="block";
-    appPage.style.display="none";
-}
-
-function showApp(){
-    signupPage.style.display="none";
-    loginPage.style.display="none";
-    appPage.style.display="block";
-}
-
-// =========================
-// SIGNUP
-// =========================
-async function signup(){
-    try{
-        const res = await fetch("/signup",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({
-                first_name:firstName.value,
-                last_name:lastName.value,
-                gender:gender.value,
-                dob:dob.value,
-                username:signupUsername.value,
-                password:signupPassword.value,
-                confirm_password:confirmPassword.value
-            })
-        });
-
-        const d = await res.json();
-        alert(d.message || d.error || "Signup failed");
-
-        if(d.message) showLogin();
-
-    }catch(err){
-        alert("❌ Signup error");
-    }
-}
-
-// =========================
-// LOGIN
-// =========================
-async function login(){
-    try{
-        const res = await fetch("/login",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({
-                username:loginUsername.value,
-                password:loginPassword.value
-            })
-        });
-
-        const d = await res.json();
-
-        if(d.token){
-            localStorage.setItem("token", d.token);
-            showApp();
-        } else {
-            alert("Login failed");
-        }
-
-    }catch(err){
-        alert("❌ Login error");
-    }
-}
-
-// =========================
 // GENERATE
-// =========================
 async function generate(){
 
-    const token = localStorage.getItem("token");
+    const productVal = product.value;
+    const audienceVal = audience.value;
+    const platformVal = platform.value;
 
-    if(!token){
-        alert("Please login again");
+    if(!productVal || !audienceVal){
+        alert("Fill all fields");
         return;
     }
 
-    result.innerHTML = "<p class='loading'>⏳ Generating premium plan...</p>";
+    addMessage(`Product: ${productVal}\nAudience: ${audienceVal}\nPlatform: ${platformVal}`, "user");
+
+    addMessage("⏳ Generating...", "ai");
 
     try{
         const res = await fetch("/generate",{
             method:"POST",
             headers:{
-                "Content-Type":"application/json",
-                "Authorization":"Bearer " + token
+                "Content-Type":"application/json"
             },
             body:JSON.stringify({
-                product:product.value,
-                audience:audience.value,
-                platform:platform.value
+                product:productVal,
+                audience:audienceVal,
+                platform:platformVal
             })
         });
 
         const d = await res.json();
 
-        if(d.campaign){
-            result.innerHTML = formatResponse(d.campaign);
-        } else {
-            result.innerHTML = "❌ Error generating";
-        }
-
-    }catch(err){
-        result.innerHTML = "❌ Error";
-    }
-}
-
-// =========================
-// HISTORY
-// =========================
-async function loadHistory(){
-
-    const token = localStorage.getItem("token");
-
-    try{
-        const res = await fetch("/history",{
-            headers:{
-                "Authorization":"Bearer " + token
-            }
+        document.querySelectorAll(".ai").forEach(el=>{
+            if(el.innerText==="⏳ Generating...") el.remove();
         });
 
-        const d = await res.json();
-
-        if(!d.history){
-            history.innerText = "No history";
-            return;
+        if(d.campaign){
+            lastResponse = d.campaign;
+            addMessage(formatResponse(d.campaign), "ai", true);
+        } else {
+            addMessage("❌ Error generating", "ai");
         }
 
-        history.innerHTML = "<h3>History</h3>" +
-            d.history.map(h => `
-            <div class="card">
-                <b>${h.platform}</b><br>
-                ${h.product} → ${h.audience}
-            </div>
-            `).join("");
-
     }catch(err){
-        history.innerText = "❌ Error loading history";
+        addMessage("❌ Server error", "ai");
     }
 }
 
-// =========================
-// LOGOUT
-// =========================
-function logout(){
-    localStorage.removeItem("token");
-    location.reload();
+// COPY
+function copyText(){
+    if(!lastResponse){
+        alert("Generate first");
+        return;
+    }
+
+    navigator.clipboard.writeText(lastResponse);
+    alert("Copied!");
 }
 
-// =========================
-// AUTO LOAD
-// =========================
-window.onload = ()=>{
-    const token = localStorage.getItem("token");
-    if(token) showApp();
-    else showSignup();
+// SHARE
+function shareText(){
+    if(!lastResponse){
+        alert("Generate first");
+        return;
+    }
+
+    const text = encodeURIComponent(lastResponse);
+    window.open(`https://wa.me/?text=${text}`, "_blank");
+}
+
+// PDF
+function downloadPDF(){
+
+    if(!lastResponse){
+        alert("Generate first");
+        return;
+    }
+
+    const element = document.createElement("div");
+    element.innerHTML = formatResponse(lastResponse);
+
+    html2pdf().from(element).save("marketing-plan.pdf");
 }
 
 </script>
