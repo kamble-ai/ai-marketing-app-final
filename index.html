@@ -7,75 +7,79 @@
 
 <style>
 body {
-    font-family:'Segoe UI';
+    font-family: 'Segoe UI', sans-serif;
     background:#0f172a;
     color:white;
-    text-align:center;
 }
 
-.box {
-    background:white;
-    color:black;
-    padding:20px;
-    border-radius:10px;
-    max-width:500px;
+.container {
+    max-width:800px;
     margin:auto;
+    padding:20px;
+}
+
+.chat-box {
+    background:#020617;
+    border-radius:12px;
+    padding:15px;
+    height:400px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+}
+
+.msg {
+    max-width:75%;
+    padding:12px;
+    margin:8px;
+    border-radius:10px;
+    line-height:1.5;
+    white-space:pre-wrap;
+}
+
+.user {
+    align-self:flex-end;
+    background:#16a34a;
+}
+
+.ai {
+    align-self:flex-start;
+    background:#1e293b;
 }
 
 input,select {
-    width:90%;
-    padding:10px;
-    margin:10px;
+    width:100%;
+    padding:12px;
+    margin:8px 0;
+    border-radius:8px;
+    border:none;
 }
 
 button {
     padding:10px;
-    margin:5px;
-    background:green;
-    color:white;
     border:none;
+    border-radius:6px;
+    cursor:pointer;
+    margin:5px;
 }
 
-#chat {
-    background:#020617;
-    color:white;
-    height:300px;
-    overflow:auto;
-    padding:10px;
-    border-radius:10px;
-}
+.generate-btn { background:#16a34a; color:white; }
+.action-btn { background:#2563eb; color:white; }
 
-.msg { margin:10px; }
-.user { color:lightgreen; }
-.ai { color:white; }
+.toolbar { margin-top:10px; }
 </style>
 </head>
 
 <body>
 
-<h2>AI Marketing Generator</h2>
+<div class="container">
 
-<div class="box">
+<h2>💬 AI Marketing Generator</h2>
 
-<div id="auth">
-<h3>Login</h3>
-<input id="loginUsername" placeholder="Username">
-<input id="loginPassword" type="password">
-<button onclick="login()">Login</button>
+<div id="chat" class="chat-box"></div>
 
-<h3>Signup</h3>
-<input id="signupUsername" placeholder="Username">
-<input id="signupPassword" type="password">
-<input id="confirmPassword" type="password">
-<button onclick="signup()">Signup</button>
-</div>
-
-<div id="app" style="display:none">
-
-<div id="chat"></div>
-
-<input id="product" placeholder="Product">
-<input id="audience" placeholder="Audience">
+<input id="product" placeholder="Enter Product">
+<input id="audience" placeholder="Enter Audience">
 
 <select id="platform">
 <option>Instagram</option>
@@ -85,113 +89,113 @@ button {
 <option>YouTube Long</option>
 </select>
 
-<button onclick="generate()">Generate</button>
+<button class="generate-btn" onclick="generate()">Generate</button>
 
-<button onclick="copyText()">Copy</button>
-<button onclick="downloadPDF()">PDF</button>
-
+<div class="toolbar">
+<button class="action-btn" onclick="copyText()">📋 Copy</button>
+<button class="action-btn" onclick="shareText()">🔗 Share</button>
+<button class="action-btn" onclick="downloadPDF()">📄 PDF</button>
 </div>
 
 </div>
 
 <script>
 
-let token = localStorage.getItem("token");
-let lastResponse="";
-
-if(token){
-    document.getElementById("auth").style.display="none";
-    document.getElementById("app").style.display="block";
-}
-
-// LOGIN
-async function login(){
-    const res = await fetch("/login",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-            username:loginUsername.value,
-            password:loginPassword.value
-        })
-    });
-
-    const d = await res.json();
-
-    if(d.token){
-        localStorage.setItem("token", d.token);
-        location.reload();
-    }else{
-        alert(d.error);
-    }
-}
-
-// SIGNUP
-async function signup(){
-    const res = await fetch("/signup",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-            username:signupUsername.value,
-            password:signupPassword.value,
-            confirm_password:confirmPassword.value
-        })
-    });
-
-    const d = await res.json();
-    alert(d.message || d.error);
-}
+let lastResponse = "";
 
 // ADD MESSAGE
 function addMessage(text, type){
+    const chat = document.getElementById("chat");
+
     const div = document.createElement("div");
-    div.className="msg "+type;
-    div.innerText=text;
+    div.className = "msg " + type;
+    div.innerText = text;
+
     chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
 }
 
 // GENERATE
 async function generate(){
 
-    addMessage("Generating...","ai");
+    const token = localStorage.getItem("token"); // 🔥 FIX
 
-    const res = await fetch("/generate",{
-        method:"POST",
-        headers:{
-            "Content-Type":"application/json",
-            "Authorization":"Bearer "+localStorage.getItem("token")
-        },
-        body:JSON.stringify({
-            product:product.value,
-            audience:audience.value,
-            platform:platform.value
-        })
-    });
+    if(!token){
+        alert("Login required");
+        return;
+    }
 
-    const d = await res.json();
+    const productVal = product.value;
+    const audienceVal = audience.value;
+    const platformVal = platform.value;
 
-    if(d.campaign){
-        lastResponse=d.campaign;
-        addMessage(d.campaign,"ai");
-    }else{
-        addMessage("Error","ai");
+    addMessage(`Product: ${productVal}\nAudience: ${audienceVal}\nPlatform: ${platformVal}`, "user");
+
+    addMessage("⏳ Generating...", "ai");
+
+    try{
+        const res = await fetch("/generate",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json",
+                "Authorization": "Bearer " + token   // 🔥 FIX
+            },
+            body:JSON.stringify({
+                product:productVal,
+                audience:audienceVal,
+                platform:platformVal
+            })
+        });
+
+        const d = await res.json();
+
+        document.querySelectorAll(".ai").forEach(el=>{
+            if(el.innerText==="⏳ Generating...") el.remove();
+        });
+
+        console.log("API:", d);
+
+        if(d.campaign){
+            lastResponse = d.campaign;
+            addMessage(d.campaign, "ai");
+        } 
+        else if(d.error){
+            addMessage("❌ " + d.error, "ai");
+        }
+        else if(d.detail){
+            addMessage("❌ " + d.detail, "ai");
+        }
+        else{
+            addMessage("❌ Unknown error", "ai");
+        }
+
+    }catch(err){
+        console.log(err);
+        addMessage("❌ Server error", "ai");
     }
 }
 
 // COPY
 function copyText(){
+    if(!lastResponse) return alert("Generate first");
     navigator.clipboard.writeText(lastResponse);
+    alert("Copied!");
+}
+
+// SHARE
+function shareText(){
+    if(!lastResponse) return alert("Generate first");
+    window.open(`https://wa.me/?text=${encodeURIComponent(lastResponse)}`);
 }
 
 // PDF
 function downloadPDF(){
+    if(!lastResponse) return alert("Generate first");
 
-    const element=document.createElement("div");
-    element.innerText=lastResponse;
-    document.body.appendChild(element);
+    const element = document.createElement("div");
+    element.innerText = lastResponse;
 
-    html2pdf().from(element).save();
-
-    setTimeout(()=>document.body.removeChild(element),1000);
+    html2pdf().from(element).save("marketing-plan.pdf");
 }
 
 </script>

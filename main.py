@@ -2,12 +2,10 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
 from groq import Groq
 from pymongo import MongoClient
 from passlib.context import CryptContext
 from jose import jwt
-
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
@@ -25,28 +23,41 @@ if not MONGO_URI or not SECRET_KEY or not GROQ_API_KEY:
     raise Exception("❌ Missing ENV variables")
 
 # =========================
-# INIT CLIENT
+# INIT CLIENTS
 # =========================
 client = Groq(api_key=GROQ_API_KEY)
 
 # =========================
-# DB
+# DB (MongoDB)
 # =========================
-mongo_client = MongoClient(MONGO_URI)
-db = mongo_client["marketing_db"]
-users_col = db["users"]
-history_col = db["history"]
+try:
+    mongo_client = MongoClient(MONGO_URI)
+    mongo_client.admin.command('ping')
+
+    db = mongo_client["marketing_db"]
+    users_col = db["users"]
+    history_col = db["history"]
+
+    print("✅ MongoDB Connected")
+
+except Exception as e:
+    print("❌ MongoDB Connection Failed:", e)
+    raise Exception("Database connection failed")
 
 # =========================
-# PASSWORD
+# PASSWORD HASH (FIXED)
 # =========================
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password):
-    return pwd_context.hash(password[:72])
+    return pwd_context.hash(password[:72])  # bcrypt safe limit
 
 def verify_password(password, hashed):
-    return pwd_context.verify(password[:72], hashed)
+    try:
+        return pwd_context.verify(password[:72], hashed)
+    except Exception as e:
+        print("❌ Password verify error:", e)
+        return False
 
 # =========================
 # JWT
@@ -62,7 +73,8 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=["HS256"])
         return payload["username"]
-    except:
+    except Exception as e:
+        print("❌ Token Error:", e)
         raise HTTPException(status_code=401, detail="Invalid token")
 
 # =========================
@@ -79,7 +91,7 @@ app.add_middleware(
 )
 
 # =========================
-# AI
+# AI FUNCTION
 # =========================
 def ai_generate(prompt):
     try:
@@ -88,83 +100,138 @@ def ai_generate(prompt):
             messages=[{"role": "user", "content": prompt}]
         )
         return response.choices[0].message.content
-    except:
-        return None
+    except Exception as e:
+        print("❌ AI Error:", e)
+        return "❌ AI Error"
 
 # =========================
-# AUTH
+# AUTH (FINAL FIXED)
 # =========================
 @app.post("/signup")
 def signup(data: dict):
-    if data["password"] != data["confirm_password"]:
-        return {"error": "Passwords do not match"}
+    try:
+        print("📩 Signup Request:", data)
 
-    if users_col.find_one({"username": data["username"]}):
-        return {"error": "User already exists"}
+        if data.get("password") != data.get("confirm_password"):
+            return {"error": "Passwords do not match"}
 
-    users_col.insert_one({
-        "username": data["username"],
-        "password": hash_password(data["password"])
-    })
+        users_col.insert_one({
+            "first_name": data.get("first_name"),
+            "last_name": data.get("last_name"),
+            "gender": data.get("gender"),
+            "dob": data.get("dob"),
+            "username": data.get("username"),
+            "password": hash_password(data.get("password"))
+        })
 
-    return {"message": "Signup successful"}
+        return {"message": "Account created successfully"}
+
+    except Exception as e:
+        print("❌ REAL SIGNUP ERROR:", str(e))
+
+        if "duplicate key" in str(e).lower():
+            return {"error": "User already exists"}
+
+        return {"error": str(e)}
 
 
 @app.post("/login")
 def login(data: dict):
-    user = users_col.find_one({"username": data["username"]})
+    try:
+        print("📩 Login Request:", data)
 
-    if not user:
-        return {"error": "User not found"}
+        user = users_col.find_one({"username": data.get("username")})
 
-    if not verify_password(data["password"], user["password"]):
-        return {"error": "Invalid password"}
+        if not user:
+            return {"error": "User not found"}
 
-    token = create_token({"username": data["username"]})
-    return {"token": token}
+        if not verify_password(data.get("password"), user.get("password")):
+            return {"error": "Invalid password"}
+
+        token = create_token({"username": data.get("username")})
+
+        return {
+            "message": "Login successful",
+            "token": token
+        }
+
+    except Exception as e:
+        print("❌ LOGIN ERROR:", e)
+        return {"error": "Login failed"}
 
 # =========================
-# GENERATE
+# AGENTS
 # =========================
-@app.post("/generate")
-def generate(data: dict, username: str = Depends(verify_token)):
-
-    product = data.get("product")
-    audience = data.get("audience")
-    platform = data.get("platform")
-
-    if not product or not audience:
-        return {"error": "Missing input"}
-
-    prompt = f"""
-Create marketing plan
+def build_prompt(platform, product, audience):
+    return f"""
+Create a HIGH-CONVERTING {platform} marketing plan.
 
 Product: {product}
 Audience: {audience}
-Platform: {platform}
 
+Give:
 1. Strategy
 2. Growth Plan
 3. Do's & Don'ts
-4. Captions
+4. 5 Captions
 5. Hashtags
 6. CTA
 """
 
-    result = ai_generate(prompt)
+def run_agent(platform, product, audience):
+    return ai_generate(build_prompt(platform, product, audience))
 
-    if not result:
-        return {"error": "AI failed"}
+# =========================
+# GENERATE (SECURE)
+# =========================
+@app.post("/generate")
+def generate(data: dict, username: str = Depends(verify_token)):
+    try:
+        product = data.get("product")
+        audience = data.get("audience")
+        platform = data.get("platform")
 
-    history_col.insert_one({
-        "username": username,
-        "product": product,
-        "audience": audience,
-        "platform": platform,
-        "result": result
-    })
+        if platform == "all":
+            platforms = [
+                "Instagram", "Facebook Ads",
+                "Google Ads", "YouTube Shorts", "YouTube Long"
+            ]
+            result = "\n\n".join([
+                run_agent(p, product, audience) for p in platforms
+            ])
+        else:
+            result = run_agent(platform, product, audience)
 
-    return {"campaign": result}
+        history_col.insert_one({
+            "username": username,
+            "product": product,
+            "audience": audience,
+            "platform": platform,
+            "result": result
+        })
+
+        return {"campaign": result}
+
+    except Exception as e:
+        print("❌ GENERATE ERROR:", e)
+        return {"error": "Generate failed"}
+
+# =========================
+# HISTORY (SECURE)
+# =========================
+@app.get("/history")
+def history(username: str = Depends(verify_token)):
+    try:
+        data = list(history_col.find(
+            {"username": username},
+            {"_id": 0}
+        ))
+
+        return {"history": data}
+
+    except Exception as e:
+        print("❌ HISTORY ERROR:", e)
+        return {"error": "History failed"}
 
 # =========================
 # FRONTEND
