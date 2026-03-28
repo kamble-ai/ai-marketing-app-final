@@ -6,88 +6,117 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
+
+/* BACKGROUND */
 body {
-    font-family: 'Segoe UI';
-    background:#0f172a;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg,#020617,#0f172a);
     color:white;
-    text-align:center;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
 }
 
-/* BOX */
+/* GLASS CARD */
 .box {
-    background:white;
-    color:black;
+    width:500px;
+    backdrop-filter: blur(20px);
+    background: rgba(255,255,255,0.08);
+    border-radius:16px;
     padding:20px;
-    border-radius:10px;
-    max-width:500px;
-    margin:auto;
+    box-shadow:0 10px 40px rgba(0,0,0,0.5);
+}
+
+/* TITLE */
+h2 {
+    text-align:center;
+    margin-bottom:15px;
 }
 
 /* CHAT */
 .chat-box {
-    background:#020617;
-    color:white;
-    height:250px;
-    overflow:auto;
-    padding:10px;
-    border-radius:10px;
+    background: rgba(0,0,0,0.6);
+    border-radius:12px;
+    padding:15px;
+    height:260px;
+    overflow-y:auto;
     margin-bottom:10px;
 }
 
-.msg { margin:10px; }
-.user { color:lightgreen; }
-.ai { color:white; }
+/* MESSAGES */
+.msg {
+    padding:10px;
+    margin:8px;
+    border-radius:10px;
+    max-width:80%;
+    line-height:1.5;
+}
+
+.user {
+    background:#16a34a;
+    align-self:flex-end;
+}
+
+.ai {
+    background:#1e293b;
+}
 
 /* INPUT */
 input,select {
-    width:90%;
+    width:100%;
     padding:10px;
-    margin:10px;
+    margin:8px 0;
+    border-radius:8px;
+    border:none;
 }
 
-/* BUTTON */
+/* BUTTONS */
 button {
     padding:10px;
-    margin:5px;
-    background:green;
-    color:white;
     border:none;
+    border-radius:8px;
+    margin:5px;
     cursor:pointer;
+    font-weight:bold;
 }
+
+.generate-btn { background:#16a34a; color:white; }
+.copy-btn { background:#2563eb; color:white; }
+.pdf-btn { background:#9333ea; color:white; }
+.logout-btn { background:#dc2626; color:white; }
+
+/* TYPING */
+.typing {
+    font-style:italic;
+    opacity:0.7;
+}
+
+/* FORMATTED OUTPUT */
+.formatted h3 {
+    text-align:center;
+    margin-top:10px;
+}
+
+.formatted p {
+    margin:6px 0;
+}
+
+.divider {
+    border-top:1px solid #475569;
+    margin:10px 0;
+}
+
 </style>
 </head>
 
 <body>
 
-<h2>🚀 AI Marketing Generator</h2>
-
 <div class="box">
 
-<!-- SIGNUP -->
-<div id="signupPage">
-<h3>Signup</h3>
-<input id="signupUsername" placeholder="Username">
-<input id="signupPassword" type="password" placeholder="Password">
-<input id="confirmPassword" type="password" placeholder="Confirm Password">
-<button onclick="signup()">Signup</button>
+<h2>🚀 AI Marketing Generator</h2>
 
-<p onclick="showLogin()" style="cursor:pointer;color:blue">Already have account? Login</p>
-</div>
-
-<!-- LOGIN -->
-<div id="loginPage" style="display:none">
-<h3>Login</h3>
-<input id="loginUsername" placeholder="Username">
-<input id="loginPassword" type="password" placeholder="Password">
-<button onclick="login()">Login</button>
-
-<p onclick="showSignup()" style="cursor:pointer;color:blue">New user? Signup</p>
-</div>
-
-<!-- APP -->
-<div id="appPage" style="display:none">
-
-<div class="chat-box" id="chat"></div>
+<div id="chat" class="chat-box"></div>
 
 <input id="product" placeholder="Product">
 <input id="audience" placeholder="Audience">
@@ -100,12 +129,10 @@ button {
 <option>YouTube Long</option>
 </select>
 
-<button onclick="generate()">Generate</button>
-<button onclick="copyText()">Copy</button>
-<button onclick="downloadPDF()">PDF</button>
-<button onclick="logout()">Logout</button>
-
-</div>
+<button class="generate-btn" onclick="generate()">Generate</button>
+<button class="copy-btn" onclick="copyText()">Copy</button>
+<button class="pdf-btn" onclick="downloadPDF()">PDF</button>
+<button class="logout-btn" onclick="logout()">Logout</button>
 
 </div>
 
@@ -113,76 +140,65 @@ button {
 
 let lastResponse = "";
 
-// =================== PAGE SWITCH
-function showSignup(){
-    signupPage.style.display="block";
-    loginPage.style.display="none";
-    appPage.style.display="none";
-}
+/* FORMAT OUTPUT */
+function formatResponse(text){
 
-function showLogin(){
-    signupPage.style.display="none";
-    loginPage.style.display="block";
-    appPage.style.display="none";
-}
+    text = text.replace(/\*\*/g,"");
 
-function showApp(){
-    signupPage.style.display="none";
-    loginPage.style.display="none";
-    appPage.style.display="block";
-}
+    const lines = text.split("\n").filter(l=>l.trim()!="");
 
-// =================== SIGNUP
-async function signup(){
-    const res = await fetch("/signup",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-            username:signupUsername.value,
-            password:signupPassword.value,
-            confirm_password:confirmPassword.value
-        })
+    let html = "<div class='formatted'>";
+    let section = 1;
+    let sub = 0;
+
+    lines.forEach(line=>{
+
+        if(line.includes("Strategy") ||
+           line.includes("Growth") ||
+           line.includes("Do") ||
+           line.includes("Caption") ||
+           line.includes("Hashtag") ||
+           line.includes("CTA")){
+
+            sub=0;
+
+            html += `<h3>${section}. ${line}</h3><div class='divider'></div>`;
+            section++;
+
+        } else {
+
+            const letter = String.fromCharCode(97 + sub);
+            html += `<p><b>${letter}.</b> ${line}</p>`;
+            sub++;
+        }
+
     });
 
-    const d = await res.json();
-    alert(d.message || d.error);
+    html += "</div>";
+    return html;
 }
 
-// =================== LOGIN
-async function login(){
-    const res = await fetch("/login",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-            username:loginUsername.value,
-            password:loginPassword.value
-        })
-    });
+/* ADD MESSAGE */
+function addMessage(text,type,isHTML=false){
 
-    const d = await res.json();
+    const chat=document.getElementById("chat");
 
-    if(d.token){
-        localStorage.setItem("token", d.token);
-        showApp();
-    } else {
-        alert(d.error);
-    }
-}
-
-// =================== ADD MESSAGE
-function addMessage(text, type){
-    const div = document.createElement("div");
+    const div=document.createElement("div");
     div.className="msg "+type;
-    div.innerText=text;
+
+    if(isHTML) div.innerHTML=text;
+    else div.innerText=text;
+
     chat.appendChild(div);
+    chat.scrollTop=chat.scrollHeight;
 }
 
-// =================== GENERATE
+/* GENERATE */
 async function generate(){
 
     const token = localStorage.getItem("token");
 
-    addMessage("Generating...","ai");
+    addMessage("⏳ AI is thinking...","ai");
 
     const res = await fetch("/generate",{
         method:"POST",
@@ -199,24 +215,29 @@ async function generate(){
 
     const d = await res.json();
 
+    document.querySelectorAll(".ai").forEach(el=>{
+        if(el.innerText.includes("thinking")) el.remove();
+    });
+
     if(d.campaign){
-        lastResponse = d.campaign;
-        addMessage(d.campaign,"ai");
-    }else{
+        lastResponse=d.campaign;
+        addMessage(formatResponse(d.campaign),"ai",true);
+    } else {
         addMessage("❌ Error","ai");
     }
 }
 
-// =================== COPY
+/* COPY */
 function copyText(){
     navigator.clipboard.writeText(lastResponse);
     alert("Copied!");
 }
 
-// =================== PDF
+/* PDF */
 function downloadPDF(){
+
     const element=document.createElement("div");
-    element.innerText=lastResponse;
+    element.innerHTML=formatResponse(lastResponse);
     document.body.appendChild(element);
 
     html2pdf().from(element).save("marketing-plan.pdf");
@@ -224,17 +245,10 @@ function downloadPDF(){
     setTimeout(()=>document.body.removeChild(element),1000);
 }
 
-// =================== LOGOUT
+/* LOGOUT */
 function logout(){
     localStorage.removeItem("token");
     location.reload();
-}
-
-// =================== AUTO LOAD
-window.onload = ()=>{
-    const token = localStorage.getItem("token");
-    if(token) showApp();
-    else showSignup();
 }
 
 </script>
