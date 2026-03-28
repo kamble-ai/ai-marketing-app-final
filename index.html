@@ -3,6 +3,9 @@
 <head>
 <title>AI Marketing Generator</title>
 
+<!-- PDF LIBRARY -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <style>
 body {
     font-family: 'Segoe UI', sans-serif;
@@ -46,36 +49,32 @@ button:hover {
     opacity:0.9;
 }
 
-/* RESULT UI */
+/* RESULT */
 #result {
     margin-top:20px;
     text-align:left;
 }
 
-/* CARD STYLE */
+/* CARD */
 .card {
     background:#ffffff;
     border-radius:12px;
-    padding:15px;
+    padding:18px;
     margin-bottom:15px;
     box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    page-break-inside: avoid;
 }
 
 .card h2 {
-    color:#1e293b;
-    margin-bottom:10px;
+    text-align:center;
+    font-weight:bold;
+    color:#0f172a;
 }
 
 .card p {
-    margin:8px 0;
-}
-
-.card ul {
-    padding-left:20px;
-}
-
-.card li {
-    margin-bottom:6px;
+    margin:10px 0;
+    line-height:1.6;
+    color:#334155;
 }
 
 /* LOADING */
@@ -115,7 +114,6 @@ button:hover {
 <p style="cursor:pointer;color:blue" onclick="showLogin()">Already signed? Login</p>
 </div>
 
-
 <!-- LOGIN -->
 <div id="loginPage" style="display:none">
 <h2>Login</h2>
@@ -127,7 +125,6 @@ button:hover {
 
 <p style="cursor:pointer;color:blue" onclick="showSignup()">New user? Signup</p>
 </div>
-
 
 <!-- APP -->
 <div id="appPage" style="display:none">
@@ -150,6 +147,12 @@ button:hover {
 <button onclick="loadHistory()">History</button>
 <button onclick="logout()">Logout</button>
 
+<br>
+
+<button onclick="downloadPDF()" style="background:#2563eb;">
+📄 Download PDF
+</button>
+
 <div id="result"></div>
 <div id="history"></div>
 
@@ -160,7 +163,7 @@ button:hover {
 <script>
 
 // =========================
-// FORMAT RESPONSE (🔥 MAIN FIX)
+// FORMAT RESPONSE (FINAL CLEAN)
 // =========================
 function formatResponse(text){
 
@@ -169,34 +172,27 @@ function formatResponse(text){
 
     sections.forEach(section=>{
         if(section.trim() !== ""){
+
             let lines = section.trim().split("\n");
             let title = lines[0];
 
             html += `<div class="card">`;
             html += `<h2>${title}</h2>`;
 
-            let listOpen = false;
+            let count = 1;
 
             lines.slice(1).forEach(line=>{
 
-                if(line.trim().startsWith("-")){
-                    if(!listOpen){
-                        html += "<ul>";
-                        listOpen = true;
-                    }
-                    html += `<li>${line.replace("-", "").trim()}</li>`;
-                }
-                else{
-                    if(listOpen){
-                        html += "</ul>";
-                        listOpen = false;
-                    }
-                    html += `<p>${line}</p>`;
-                }
+                let cleanLine = line
+                    .replace(/^\*\*|\*\*$/g, "")
+                    .replace(/^[-*+]\s*/, "")
+                    .trim();
 
+                if(cleanLine !== ""){
+                    html += `<p><b>${count}.</b> ${cleanLine}</p>`;
+                    count++;
+                }
             });
-
-            if(listOpen) html += "</ul>";
 
             html += `</div>`;
         }
@@ -205,6 +201,28 @@ function formatResponse(text){
     return html;
 }
 
+// =========================
+// PDF DOWNLOAD
+// =========================
+function downloadPDF(){
+
+    const element = document.getElementById("result");
+
+    if(!element.innerHTML){
+        alert("Generate content first!");
+        return;
+    }
+
+    const opt = {
+        margin: 0.5,
+        filename: 'marketing-plan.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save();
+}
 
 // =========================
 // PAGE SWITCH
@@ -247,12 +265,9 @@ async function signup(){
         });
 
         const d = await res.json();
-
         alert(d.message || d.error || "Signup failed");
 
-        if(d.message){
-            showLogin();
-        }
+        if(d.message) showLogin();
 
     }catch(err){
         alert("❌ Signup error");
@@ -288,7 +303,7 @@ async function login(){
 }
 
 // =========================
-// GENERATE (UPDATED UI)
+// GENERATE
 // =========================
 async function generate(){
 
