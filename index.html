@@ -5,47 +5,82 @@
 
 <style>
 body {
-    font-family: Arial;
-    background: linear-gradient(135deg,#000,#0f172a);
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg,#020617,#0f172a);
     color:white;
     text-align:center;
 }
 
+/* MAIN BOX */
 .box {
     background:white;
     color:black;
-    padding:20px;
-    border-radius:10px;
-    max-width:450px;
+    padding:25px;
+    border-radius:12px;
+    max-width:500px;
     margin:auto;
+    box-shadow:0 10px 30px rgba(0,0,0,0.2);
 }
 
+/* INPUTS */
 input,select {
     width:90%;
-    padding:10px;
+    padding:12px;
     margin:10px;
+    border-radius:8px;
+    border:1px solid #ccc;
 }
 
+/* BUTTONS */
 button {
-    padding:10px;
-    background:green;
+    padding:10px 15px;
+    background:#16a34a;
     color:white;
     border:none;
+    border-radius:6px;
     cursor:pointer;
+    margin:5px;
 }
 
 button:hover {
     opacity:0.9;
 }
 
+/* RESULT UI */
 #result {
-    background:#f1f5f9;
-    padding:10px;
-    margin-top:10px;
+    margin-top:20px;
+    text-align:left;
 }
 
+/* CARD STYLE */
+.card {
+    background:#ffffff;
+    border-radius:12px;
+    padding:15px;
+    margin-bottom:15px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+}
+
+.card h2 {
+    color:#1e293b;
+    margin-bottom:10px;
+}
+
+.card p {
+    margin:8px 0;
+}
+
+.card ul {
+    padding-left:20px;
+}
+
+.card li {
+    margin-bottom:6px;
+}
+
+/* LOADING */
 .loading {
-    color:blue;
+    color:#2563eb;
     font-weight:bold;
 }
 </style>
@@ -125,6 +160,53 @@ button:hover {
 <script>
 
 // =========================
+// FORMAT RESPONSE (🔥 MAIN FIX)
+// =========================
+function formatResponse(text){
+
+    let sections = text.split("###");
+    let html = "";
+
+    sections.forEach(section=>{
+        if(section.trim() !== ""){
+            let lines = section.trim().split("\n");
+            let title = lines[0];
+
+            html += `<div class="card">`;
+            html += `<h2>${title}</h2>`;
+
+            let listOpen = false;
+
+            lines.slice(1).forEach(line=>{
+
+                if(line.trim().startsWith("-")){
+                    if(!listOpen){
+                        html += "<ul>";
+                        listOpen = true;
+                    }
+                    html += `<li>${line.replace("-", "").trim()}</li>`;
+                }
+                else{
+                    if(listOpen){
+                        html += "</ul>";
+                        listOpen = false;
+                    }
+                    html += `<p>${line}</p>`;
+                }
+
+            });
+
+            if(listOpen) html += "</ul>";
+
+            html += `</div>`;
+        }
+    });
+
+    return html;
+}
+
+
+// =========================
 // PAGE SWITCH
 // =========================
 function showSignup(){
@@ -174,12 +256,11 @@ async function signup(){
 
     }catch(err){
         alert("❌ Signup error");
-        console.log(err);
     }
 }
 
 // =========================
-// LOGIN (JWT)
+// LOGIN
 // =========================
 async function login(){
     try{
@@ -198,17 +279,16 @@ async function login(){
             localStorage.setItem("token", d.token);
             showApp();
         } else {
-            alert(d.error || "Login failed");
+            alert("Login failed");
         }
 
     }catch(err){
         alert("❌ Login error");
-        console.log(err);
     }
 }
 
 // =========================
-// GENERATE (SECURE)
+// GENERATE (UPDATED UI)
 // =========================
 async function generate(){
 
@@ -219,7 +299,7 @@ async function generate(){
         return;
     }
 
-    result.innerHTML = "<p class='loading'>⏳ Generating...</p>";
+    result.innerHTML = "<p class='loading'>⏳ Generating premium plan...</p>";
 
     try{
         const res = await fetch("/generate",{
@@ -238,19 +318,18 @@ async function generate(){
         const d = await res.json();
 
         if(d.campaign){
-            result.innerText = d.campaign;
+            result.innerHTML = formatResponse(d.campaign);
         } else {
-            result.innerText = d.detail || "Error generating";
+            result.innerHTML = "❌ Error generating";
         }
 
     }catch(err){
-        result.innerText = "❌ Error";
-        console.log(err);
+        result.innerHTML = "❌ Error";
     }
 }
 
 // =========================
-// HISTORY (SECURE)
+// HISTORY
 // =========================
 async function loadHistory(){
 
@@ -272,7 +351,7 @@ async function loadHistory(){
 
         history.innerHTML = "<h3>History</h3>" +
             d.history.map(h => `
-            <div style="border:1px solid #ccc;margin:10px;padding:10px">
+            <div class="card">
                 <b>${h.platform}</b><br>
                 ${h.product} → ${h.audience}
             </div>
@@ -280,7 +359,6 @@ async function loadHistory(){
 
     }catch(err){
         history.innerText = "❌ Error loading history";
-        console.log(err);
     }
 }
 
