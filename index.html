@@ -3,288 +3,395 @@
 <head>
 <title>AI Marketing Generator</title>
 
+<!-- PDF LIBRARY -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
 body {
     font-family: 'Segoe UI', sans-serif;
-    background:#0f172a;
+    background: linear-gradient(135deg,#020617,#0f172a);
     color:white;
+    text-align:center;
 }
 
-.container {
-    max-width:800px;
-    margin:auto;
-    padding:20px;
-}
-
-.chat-box {
-    background:#020617;
+/* MAIN BOX */
+.box {
+    background:white;
+    color:black;
+    padding:25px;
     border-radius:12px;
-    padding:15px;
-    height:420px;
-    overflow-y:auto;
-    display:flex;
-    flex-direction:column;
+    max-width:500px;
+    margin:auto;
+    box-shadow:0 10px 30px rgba(0,0,0,0.2);
 }
 
-.msg {
-    max-width:75%;
-    padding:12px;
-    margin:8px;
-    border-radius:10px;
-    line-height:1.6;
-    white-space:pre-wrap;
-}
-
-.user {
-    align-self:flex-end;
-    background:#16a34a;
-}
-
-.ai {
-    align-self:flex-start;
-    background:#1e293b;
-}
-
-.input-box {
-    margin-top:10px;
-}
-
+/* INPUTS */
 input,select {
-    width:100%;
+    width:90%;
     padding:12px;
-    margin:8px 0;
+    margin:10px;
     border-radius:8px;
-    border:none;
+    border:1px solid #ccc;
 }
 
+/* BUTTONS */
 button {
-    padding:10px;
+    padding:10px 15px;
+    background:#16a34a;
+    color:white;
     border:none;
     border-radius:6px;
     cursor:pointer;
     margin:5px;
 }
 
-.generate-btn {
-    background:#16a34a;
-    color:white;
+button:hover {
+    opacity:0.9;
 }
 
-.action-btn {
-    background:#2563eb;
-    color:white;
+/* RESULT */
+#result {
+    margin-top:20px;
+    text-align:left;
 }
 
-.toolbar {
-    margin-top:10px;
+/* CARD */
+.card {
+    background:#ffffff;
+    border-radius:12px;
+    padding:18px;
+    margin-bottom:15px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    page-break-inside: avoid;
 }
 
-/* FORMATTED OUTPUT */
-.formatted h2 {
+.card h2 {
     text-align:center;
     font-weight:bold;
-    margin-top:20px;
+    color:#0f172a;
 }
 
-.formatted p {
-    margin:8px 0;
+.card p {
+    margin:10px 0;
+    line-height:1.6;
+    color:#334155;
 }
 
-/* DIVIDER */
-.divider {
-    border: none;
-    border-top: 1px solid #cbd5f5;
-    margin: 15px 0 10px;
-    opacity: 0.5;
+/* LOADING */
+.loading {
+    color:#2563eb;
+    font-weight:bold;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<h1>🚀 AI Marketing Generator</h1>
 
-<h2>💬 AI Marketing Generator</h2>
+<div class="box">
 
-<div id="chat" class="chat-box"></div>
+<!-- SIGNUP -->
+<div id="signupPage">
+<h2>Signup</h2>
 
-<div class="input-box">
+<input id="firstName" placeholder="First Name">
+<input id="lastName" placeholder="Last Name">
 
-<input id="product" placeholder="Enter Product">
-<input id="audience" placeholder="Enter Audience">
-
-<select id="platform">
-<option>Instagram</option>
-<option>Facebook Ads</option>
-<option>Google Ads</option>
-<option>YouTube Shorts</option>
-<option>YouTube Long</option>
+<select id="gender">
+<option>Male</option>
+<option>Female</option>
 </select>
 
-<button class="generate-btn" onclick="generate()">Generate</button>
+<input id="dob" type="date">
 
+<input id="signupUsername" placeholder="Username">
+<input id="signupPassword" type="password" placeholder="Password">
+<input id="confirmPassword" type="password" placeholder="Confirm Password">
+
+<button onclick="signup()">Signup</button>
+
+<p style="cursor:pointer;color:blue" onclick="showLogin()">Already signed? Login</p>
 </div>
 
-<div class="toolbar">
-<button class="action-btn" onclick="copyText()">📋 Copy</button>
-<button class="action-btn" onclick="shareText()">🔗 Share</button>
-<button class="action-btn" onclick="downloadPDF()">📄 PDF</button>
+<!-- LOGIN -->
+<div id="loginPage" style="display:none">
+<h2>Login</h2>
+
+<input id="loginUsername" placeholder="Username">
+<input id="loginPassword" type="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<p style="cursor:pointer;color:blue" onclick="showSignup()">New user? Signup</p>
+</div>
+
+<!-- APP -->
+<div id="appPage" style="display:none">
+
+<h3>Welcome 👋</h3>
+
+<input id="product" placeholder="Product">
+<input id="audience" placeholder="Audience">
+
+<select id="platform">
+<option value="Instagram">Instagram</option>
+<option value="Facebook Ads">Facebook Ads</option>
+<option value="Google Ads">Google Ads</option>
+<option value="YouTube Shorts">YouTube Shorts</option>
+<option value="YouTube Long">YouTube Long</option>
+<option value="all">All</option>
+</select>
+
+<button onclick="generate()">Generate</button>
+<button onclick="loadHistory()">History</button>
+<button onclick="logout()">Logout</button>
+
+<br>
+
+<button onclick="downloadPDF()" style="background:#2563eb;">
+📄 Download PDF
+</button>
+
+<div id="result"></div>
+<div id="history"></div>
+
 </div>
 
 </div>
 
 <script>
 
-let lastResponse = "";
-
-// 🔥 FORMAT CLEAN OUTPUT
+// =========================
+// FORMAT RESPONSE (FINAL CLEAN)
+// =========================
 function formatResponse(text){
 
-    text = text.replace(/\*\*/g, "").replace(/\*/g, "");
+    let sections = text.split("###");
+    let html = "";
 
-    const lines = text.split("\n").filter(l => l.trim() !== "");
+    sections.forEach(section=>{
+        if(section.trim() !== ""){
 
-    let html = "<div class='formatted'>";
-    let section = 1;
-    let sub = 0;
+            let lines = section.trim().split("\n");
+            let title = lines[0];
 
-    lines.forEach(line => {
+            html += `<div class="card">`;
+            html += `<h2>${title}</h2>`;
 
-        line = line.trim();
+            let count = 1;
 
-        if(
-            line.toLowerCase().includes("strategy") ||
-            line.toLowerCase().includes("growth") ||
-            line.toLowerCase().includes("plan") ||
-            line.toLowerCase().includes("do") ||
-            line.toLowerCase().includes("don't") ||
-            line.toLowerCase().includes("caption") ||
-            line.toLowerCase().includes("hashtag")
-        ){
-            sub = 0;
+            lines.slice(1).forEach(line=>{
 
-            html += `
-                <h2>${section}. ${line}</h2>
-                <hr class="divider">
-            `;
+                let cleanLine = line
+                    .replace(/^\*\*|\*\*$/g, "")
+                    .replace(/^[-*+]\s*/, "")
+                    .trim();
 
-            section++;
+                if(cleanLine !== ""){
+                    html += `<p><b>${count}.</b> ${cleanLine}</p>`;
+                    count++;
+                }
+            });
+
+            html += `</div>`;
         }
-        else{
-
-            const letter = String.fromCharCode(97 + sub);
-
-            html += `<p><b>${letter}.</b> ${line}</p>`;
-            sub++;
-        }
-
     });
 
-    html += "</div>";
     return html;
 }
 
-// ADD MESSAGE
-function addMessage(text, type, isHTML=false){
+// =========================
+// PDF DOWNLOAD
+// =========================
+function downloadPDF(){
 
-    const chat = document.getElementById("chat");
+    const element = document.getElementById("result");
 
-    const div = document.createElement("div");
-    div.className = "msg " + type;
-
-    if(isHTML){
-        div.innerHTML = text;
-    } else {
-        div.innerText = text;
-    }
-
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
-}
-
-// GENERATE
-async function generate(){
-
-    const productVal = product.value;
-    const audienceVal = audience.value;
-    const platformVal = platform.value;
-
-    if(!productVal || !audienceVal){
-        alert("Fill all fields");
+    if(!element.innerHTML){
+        alert("Generate content first!");
         return;
     }
 
-    addMessage(`Product: ${productVal}\nAudience: ${audienceVal}\nPlatform: ${platformVal}`, "user");
+    const opt = {
+        margin: 0.5,
+        filename: 'marketing-plan.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
 
-    addMessage("⏳ Generating...", "ai");
+    html2pdf().set(opt).from(element).save();
+}
 
+// =========================
+// PAGE SWITCH
+// =========================
+function showSignup(){
+    signupPage.style.display="block";
+    loginPage.style.display="none";
+    appPage.style.display="none";
+}
+
+function showLogin(){
+    signupPage.style.display="none";
+    loginPage.style.display="block";
+    appPage.style.display="none";
+}
+
+function showApp(){
+    signupPage.style.display="none";
+    loginPage.style.display="none";
+    appPage.style.display="block";
+}
+
+// =========================
+// SIGNUP
+// =========================
+async function signup(){
     try{
-        const res = await fetch("/generate",{
+        const res = await fetch("/signup",{
             method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
+            headers:{"Content-Type":"application/json"},
             body:JSON.stringify({
-                product:productVal,
-                audience:audienceVal,
-                platform:platformVal
+                first_name:firstName.value,
+                last_name:lastName.value,
+                gender:gender.value,
+                dob:dob.value,
+                username:signupUsername.value,
+                password:signupPassword.value,
+                confirm_password:confirmPassword.value
+            })
+        });
+
+        const d = await res.json();
+        alert(d.message || d.error || "Signup failed");
+
+        if(d.message) showLogin();
+
+    }catch(err){
+        alert("❌ Signup error");
+    }
+}
+
+// =========================
+// LOGIN
+// =========================
+async function login(){
+    try{
+        const res = await fetch("/login",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+                username:loginUsername.value,
+                password:loginPassword.value
             })
         });
 
         const d = await res.json();
 
-        document.querySelectorAll(".ai").forEach(el=>{
-            if(el.innerText==="⏳ Generating...") el.remove();
-        });
-
-        if(d.campaign){
-            lastResponse = d.campaign;
-            addMessage(formatResponse(d.campaign), "ai", true);
+        if(d.token){
+            localStorage.setItem("token", d.token);
+            showApp();
         } else {
-            addMessage("❌ Error generating", "ai");
+            alert("Login failed");
         }
 
     }catch(err){
-        addMessage("❌ Server error", "ai");
+        alert("❌ Login error");
     }
 }
 
-// COPY
-function copyText(){
-    if(!lastResponse){
-        alert("Generate first");
+// =========================
+// GENERATE
+// =========================
+async function generate(){
+
+    const token = localStorage.getItem("token");
+
+    if(!token){
+        alert("Please login again");
         return;
     }
 
-    navigator.clipboard.writeText(lastResponse);
-    alert("Copied!");
+    result.innerHTML = "<p class='loading'>⏳ Generating premium plan...</p>";
+
+    try{
+        const res = await fetch("/generate",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json",
+                "Authorization":"Bearer " + token
+            },
+            body:JSON.stringify({
+                product:product.value,
+                audience:audience.value,
+                platform:platform.value
+            })
+        });
+
+        const d = await res.json();
+
+        if(d.campaign){
+            result.innerHTML = formatResponse(d.campaign);
+        } else {
+            result.innerHTML = "❌ Error generating";
+        }
+
+    }catch(err){
+        result.innerHTML = "❌ Error";
+    }
 }
 
-// SHARE
-function shareText(){
-    if(!lastResponse){
-        alert("Generate first");
-        return;
-    }
+// =========================
+// HISTORY
+// =========================
+async function loadHistory(){
 
-    const text = encodeURIComponent(lastResponse);
-    window.open(`https://wa.me/?text=${text}`, "_blank");
+    const token = localStorage.getItem("token");
+
+    try{
+        const res = await fetch("/history",{
+            headers:{
+                "Authorization":"Bearer " + token
+            }
+        });
+
+        const d = await res.json();
+
+        if(!d.history){
+            history.innerText = "No history";
+            return;
+        }
+
+        history.innerHTML = "<h3>History</h3>" +
+            d.history.map(h => `
+            <div class="card">
+                <b>${h.platform}</b><br>
+                ${h.product} → ${h.audience}
+            </div>
+            `).join("");
+
+    }catch(err){
+        history.innerText = "❌ Error loading history";
+    }
 }
 
-// PDF
-function downloadPDF(){
+// =========================
+// LOGOUT
+// =========================
+function logout(){
+    localStorage.removeItem("token");
+    location.reload();
+}
 
-    if(!lastResponse){
-        alert("Generate first");
-        return;
-    }
-
-    const element = document.createElement("div");
-    element.innerHTML = formatResponse(lastResponse);
-
-    html2pdf().from(element).save("marketing-plan.pdf");
+// =========================
+// AUTO LOAD
+// =========================
+window.onload = ()=>{
+    const token = localStorage.getItem("token");
+    if(token) showApp();
+    else showSignup();
 }
 
 </script>
