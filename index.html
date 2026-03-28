@@ -7,79 +7,90 @@
 
 <style>
 body {
-    font-family: 'Segoe UI', sans-serif;
+    font-family: 'Segoe UI';
     background:#0f172a;
     color:white;
+    text-align:center;
 }
 
-.container {
-    max-width:800px;
-    margin:auto;
+/* BOX */
+.box {
+    background:white;
+    color:black;
     padding:20px;
+    border-radius:10px;
+    max-width:500px;
+    margin:auto;
 }
 
+/* CHAT */
 .chat-box {
     background:#020617;
-    border-radius:12px;
-    padding:15px;
-    height:400px;
-    overflow-y:auto;
-    display:flex;
-    flex-direction:column;
-}
-
-.msg {
-    max-width:75%;
-    padding:12px;
-    margin:8px;
+    color:white;
+    height:250px;
+    overflow:auto;
+    padding:10px;
     border-radius:10px;
-    line-height:1.5;
-    white-space:pre-wrap;
+    margin-bottom:10px;
 }
 
-.user {
-    align-self:flex-end;
-    background:#16a34a;
-}
+.msg { margin:10px; }
+.user { color:lightgreen; }
+.ai { color:white; }
 
-.ai {
-    align-self:flex-start;
-    background:#1e293b;
-}
-
+/* INPUT */
 input,select {
-    width:100%;
-    padding:12px;
-    margin:8px 0;
-    border-radius:8px;
-    border:none;
+    width:90%;
+    padding:10px;
+    margin:10px;
 }
 
+/* BUTTON */
 button {
     padding:10px;
-    border:none;
-    border-radius:6px;
-    cursor:pointer;
     margin:5px;
+    background:green;
+    color:white;
+    border:none;
+    cursor:pointer;
 }
-
-.generate-btn { background:#16a34a; color:white; }
-.action-btn { background:#2563eb; color:white; }
-
-.toolbar { margin-top:10px; }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<h2>🚀 AI Marketing Generator</h2>
 
-<h2>💬 AI Marketing Generator</h2>
+<div class="box">
 
-<div id="chat" class="chat-box"></div>
+<!-- SIGNUP -->
+<div id="signupPage">
+<h3>Signup</h3>
+<input id="signupUsername" placeholder="Username">
+<input id="signupPassword" type="password" placeholder="Password">
+<input id="confirmPassword" type="password" placeholder="Confirm Password">
+<button onclick="signup()">Signup</button>
 
-<input id="product" placeholder="Enter Product">
-<input id="audience" placeholder="Enter Audience">
+<p onclick="showLogin()" style="cursor:pointer;color:blue">Already have account? Login</p>
+</div>
+
+<!-- LOGIN -->
+<div id="loginPage" style="display:none">
+<h3>Login</h3>
+<input id="loginUsername" placeholder="Username">
+<input id="loginPassword" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+
+<p onclick="showSignup()" style="cursor:pointer;color:blue">New user? Signup</p>
+</div>
+
+<!-- APP -->
+<div id="appPage" style="display:none">
+
+<div class="chat-box" id="chat"></div>
+
+<input id="product" placeholder="Product">
+<input id="audience" placeholder="Audience">
 
 <select id="platform">
 <option>Instagram</option>
@@ -89,12 +100,11 @@ button {
 <option>YouTube Long</option>
 </select>
 
-<button class="generate-btn" onclick="generate()">Generate</button>
+<button onclick="generate()">Generate</button>
+<button onclick="copyText()">Copy</button>
+<button onclick="downloadPDF()">PDF</button>
+<button onclick="logout()">Logout</button>
 
-<div class="toolbar">
-<button class="action-btn" onclick="copyText()">📋 Copy</button>
-<button class="action-btn" onclick="shareText()">🔗 Share</button>
-<button class="action-btn" onclick="downloadPDF()">📄 PDF</button>
 </div>
 
 </div>
@@ -103,99 +113,128 @@ button {
 
 let lastResponse = "";
 
-// ADD MESSAGE
-function addMessage(text, type){
-    const chat = document.getElementById("chat");
-
-    const div = document.createElement("div");
-    div.className = "msg " + type;
-    div.innerText = text;
-
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
+// =================== PAGE SWITCH
+function showSignup(){
+    signupPage.style.display="block";
+    loginPage.style.display="none";
+    appPage.style.display="none";
 }
 
-// GENERATE
+function showLogin(){
+    signupPage.style.display="none";
+    loginPage.style.display="block";
+    appPage.style.display="none";
+}
+
+function showApp(){
+    signupPage.style.display="none";
+    loginPage.style.display="none";
+    appPage.style.display="block";
+}
+
+// =================== SIGNUP
+async function signup(){
+    const res = await fetch("/signup",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            username:signupUsername.value,
+            password:signupPassword.value,
+            confirm_password:confirmPassword.value
+        })
+    });
+
+    const d = await res.json();
+    alert(d.message || d.error);
+}
+
+// =================== LOGIN
+async function login(){
+    const res = await fetch("/login",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            username:loginUsername.value,
+            password:loginPassword.value
+        })
+    });
+
+    const d = await res.json();
+
+    if(d.token){
+        localStorage.setItem("token", d.token);
+        showApp();
+    } else {
+        alert(d.error);
+    }
+}
+
+// =================== ADD MESSAGE
+function addMessage(text, type){
+    const div = document.createElement("div");
+    div.className="msg "+type;
+    div.innerText=text;
+    chat.appendChild(div);
+}
+
+// =================== GENERATE
 async function generate(){
 
-    const token = localStorage.getItem("token"); // 🔥 FIX
+    const token = localStorage.getItem("token");
 
-    if(!token){
-        alert("Login required");
-        return;
-    }
+    addMessage("Generating...","ai");
 
-    const productVal = product.value;
-    const audienceVal = audience.value;
-    const platformVal = platform.value;
+    const res = await fetch("/generate",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json",
+            "Authorization":"Bearer "+token
+        },
+        body:JSON.stringify({
+            product:product.value,
+            audience:audience.value,
+            platform:platform.value
+        })
+    });
 
-    addMessage(`Product: ${productVal}\nAudience: ${audienceVal}\nPlatform: ${platformVal}`, "user");
+    const d = await res.json();
 
-    addMessage("⏳ Generating...", "ai");
-
-    try{
-        const res = await fetch("/generate",{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json",
-                "Authorization": "Bearer " + token   // 🔥 FIX
-            },
-            body:JSON.stringify({
-                product:productVal,
-                audience:audienceVal,
-                platform:platformVal
-            })
-        });
-
-        const d = await res.json();
-
-        document.querySelectorAll(".ai").forEach(el=>{
-            if(el.innerText==="⏳ Generating...") el.remove();
-        });
-
-        console.log("API:", d);
-
-        if(d.campaign){
-            lastResponse = d.campaign;
-            addMessage(d.campaign, "ai");
-        } 
-        else if(d.error){
-            addMessage("❌ " + d.error, "ai");
-        }
-        else if(d.detail){
-            addMessage("❌ " + d.detail, "ai");
-        }
-        else{
-            addMessage("❌ Unknown error", "ai");
-        }
-
-    }catch(err){
-        console.log(err);
-        addMessage("❌ Server error", "ai");
+    if(d.campaign){
+        lastResponse = d.campaign;
+        addMessage(d.campaign,"ai");
+    }else{
+        addMessage("❌ Error","ai");
     }
 }
 
-// COPY
+// =================== COPY
 function copyText(){
-    if(!lastResponse) return alert("Generate first");
     navigator.clipboard.writeText(lastResponse);
     alert("Copied!");
 }
 
-// SHARE
-function shareText(){
-    if(!lastResponse) return alert("Generate first");
-    window.open(`https://wa.me/?text=${encodeURIComponent(lastResponse)}`);
-}
-
-// PDF
+// =================== PDF
 function downloadPDF(){
-    if(!lastResponse) return alert("Generate first");
-
-    const element = document.createElement("div");
-    element.innerText = lastResponse;
+    const element=document.createElement("div");
+    element.innerText=lastResponse;
+    document.body.appendChild(element);
 
     html2pdf().from(element).save("marketing-plan.pdf");
+
+    setTimeout(()=>document.body.removeChild(element),1000);
+}
+
+// =================== LOGOUT
+function logout(){
+    localStorage.removeItem("token");
+    location.reload();
+}
+
+// =================== AUTO LOAD
+window.onload = ()=>{
+    const token = localStorage.getItem("token");
+    if(token) showApp();
+    else showSignup();
 }
 
 </script>
