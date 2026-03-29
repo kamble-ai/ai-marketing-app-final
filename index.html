@@ -32,10 +32,11 @@ body {
 /* CARD */
 .card {
     background:#1e293b;
-    padding:18px;
+    padding:20px;
     margin:15px 0;
     border-radius:12px;
     text-align:left;
+    width:100%;
 }
 
 .card h3 {
@@ -168,7 +169,7 @@ async function login(){
     }
 }
 
-// ================= 🔥 FINAL PARSER (UPDATED)
+// ================= 🔥 FINAL SMART PARSER
 function formatToCards(text){
 
     text = text.replace(/\*\*/g,"");
@@ -192,31 +193,34 @@ function formatToCards(text){
 
         let lower = l.toLowerCase();
 
-        if(lower.includes("strategy")) { current="strategy"; return; }
-        if(lower.includes("growth")) { current="growth"; return; }
-        if(lower.includes("caption")) { current="captions"; return; }
-        if(lower.includes("hashtag")) { current="hashtags"; return; }
+        // 🔥 STRICT SECTION DETECTION
+        if(lower.startsWith("1.") || lower === "strategy") { current="strategy"; return; }
+        if(lower.startsWith("2.") || lower.includes("growth")) { current="growth"; return; }
+        if(lower.includes("do's")) { current="do"; return; }
+        if(lower === "do:" || lower === "do") { current="do"; return; }
+        if(lower.includes("don't")) { current="dont"; return; }
+        if(lower.includes("captions")) { current="captions"; return; }
+        if(lower.includes("hashtags")) { current="hashtags"; return; }
         if(lower.includes("cta")) { current="cta"; return; }
 
-        // 🔥 STRONG DO / DON'T DETECTION
-        if(lower.includes("do:") || lower === "do"){
-            current = "do";
-            return;
-        }
-
-        if(lower.includes("don't") || lower.includes("dont")){
-            current = "dont";
-            return;
-        }
-
-        // STORE DATA
+        // 🔥 PURE HASHTAG ONLY
         if(current === "hashtags"){
-            let tag = l.replace(/[-•]/g,"").trim();
-            if(!tag.startsWith("#")) tag = "#"+tag;
-            sections.hashtags.push(tag);
-        } else {
-            sections[current]?.push(l);
+            let clean = l.replace(/[-•]/g,"").trim();
+
+            if(clean.startsWith("#") && clean.split(" ").length === 1){
+                sections.hashtags.push(clean);
+            }
+            return;
         }
+
+        // 🔥 CAPTIONS SHOULD STAY CAPTIONS
+        if(current === "captions"){
+            sections.captions.push(l);
+            return;
+        }
+
+        // NORMAL STORE
+        sections[current]?.push(l);
 
     });
 
@@ -233,7 +237,6 @@ function formatToCards(text){
     html += createCard("Strategy", sections.strategy);
     html += createCard("Growth Plan", sections.growth);
 
-    // ✅ NOW SEPARATE CARDS
     html += createCard("✅ Do", sections.do);
     html += createCard("❌ Don't", sections.dont);
 
