@@ -27,9 +27,10 @@ body {
     padding:20px;
     border-radius:12px;
     margin-bottom:15px;
+    overflow:hidden;
 }
 
-/* CARD */
+/* CARD FIX */
 .card {
     background:#1e293b;
     padding:20px;
@@ -37,6 +38,7 @@ body {
     border-radius:12px;
     text-align:left;
     width:100%;
+    box-sizing:border-box;
 }
 
 .card h3 {
@@ -44,9 +46,10 @@ body {
 }
 
 .card p {
-    color:#f1f5f9;
-    line-height:1.7;
+    color:#e2e8f0;
+    line-height:1.6;
     font-size:14px;
+    word-wrap:break-word;
 }
 
 /* LOADER */
@@ -169,10 +172,11 @@ async function login(){
     }
 }
 
-// ================= 🔥 FINAL SMART PARSER
+// ================= 🔥 FINAL PARSER
 function formatToCards(text){
 
-    text = text.replace(/\*\*/g,"");
+    // REMOVE ALL *
+    text = text.replace(/\*/g,"");
 
     const sections = {
         strategy: [],
@@ -193,38 +197,30 @@ function formatToCards(text){
 
         let lower = l.toLowerCase();
 
-        // 🔥 STRICT SECTION DETECTION
-        if(lower.startsWith("1.") || lower === "strategy") { current="strategy"; return; }
-        if(lower.startsWith("2.") || lower.includes("growth")) { current="growth"; return; }
-        if(lower.includes("do's")) { current="do"; return; }
-        if(lower === "do:" || lower === "do") { current="do"; return; }
+        // STRICT SECTION LOCK
+        if(lower.includes("strategy")) { current="strategy"; return; }
+        if(lower.includes("growth")) { current="growth"; return; }
+        if(lower.includes("do's") || lower === "do") { current="do"; return; }
         if(lower.includes("don't")) { current="dont"; return; }
         if(lower.includes("captions")) { current="captions"; return; }
-        if(lower.includes("hashtags")) { current="hashtags"; return; }
-        if(lower.includes("cta")) { current="cta"; return; }
+        if(lower.includes("hashtag")) { current="hashtags"; return; }
+        if(lower.includes("cta") || lower.includes("call to action")) { current="cta"; return; }
 
-        // 🔥 PURE HASHTAG ONLY
+        // HASHTAG DETECTION (ANYWHERE)
         if(current === "hashtags"){
-            let clean = l.replace(/[-•]/g,"").trim();
-
-            if(clean.startsWith("#") && clean.split(" ").length === 1){
-                sections.hashtags.push(clean);
+            let tags = l.match(/#\w+/g);
+            if(tags){
+                sections.hashtags.push(...tags);
             }
             return;
         }
 
-        // 🔥 CAPTIONS SHOULD STAY CAPTIONS
-        if(current === "captions"){
-            sections.captions.push(l);
-            return;
+        // STORE
+        if(current){
+            sections[current].push(l);
         }
 
-        // NORMAL STORE
-        sections[current]?.push(l);
-
     });
-
-    let html = "";
 
     function createCard(title, arr){
         if(!arr.length) return "";
@@ -234,12 +230,12 @@ function formatToCards(text){
         </div>`;
     }
 
+    let html = "";
+
     html += createCard("Strategy", sections.strategy);
     html += createCard("Growth Plan", sections.growth);
-
     html += createCard("✅ Do", sections.do);
     html += createCard("❌ Don't", sections.dont);
-
     html += createCard("Captions", sections.captions);
 
     if(sections.hashtags.length){
