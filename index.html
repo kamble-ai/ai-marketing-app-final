@@ -40,29 +40,24 @@ body {
 
 .card h3 {
     color:#22c55e;
-    margin-bottom:10px;
 }
 
-/* 🔥 FIXED TEXT VISIBILITY */
 .card p {
-    margin:6px 0;
+    color:#f1f5f9;
     line-height:1.7;
-    color:#f1f5f9; /* bright readable */
     font-size:14px;
 }
 
 /* LOADER */
 .loader {
-    text-align:center;
-    font-size:18px;
     color:#22c55e;
+    font-size:18px;
     animation: blink 1s infinite;
 }
-
 @keyframes blink {
-    0% {opacity:0.3}
-    50% {opacity:1}
-    100% {opacity:0.3}
+    0%{opacity:0.3}
+    50%{opacity:1}
+    100%{opacity:0.3}
 }
 
 input,select {
@@ -90,7 +85,7 @@ button {
 
 <div id="signupPage">
 <h3>Signup</h3>
-<input id="signupUsername" placeholder="Username">
+<input id="signupUsername">
 <input id="signupPassword" type="password">
 <input id="confirmPassword" type="password">
 <button onclick="signup()">Signup</button>
@@ -107,7 +102,7 @@ button {
 
 <div id="appPage" style="display:none">
 
-<div class="chat-box" id="chat"></div>
+<div id="chat" class="chat-box"></div>
 
 <input id="product" placeholder="Product">
 <input id="audience" placeholder="Audience">
@@ -126,19 +121,18 @@ button {
 <button onclick="logout()">Logout</button>
 
 </div>
-
 </div>
 
 <script>
 
 let lastResponse = "";
 
-// PAGE SWITCH
+// ================= PAGE SWITCH
 function showSignup(){ signupPage.style.display="block"; loginPage.style.display="none"; appPage.style.display="none"; }
 function showLogin(){ signupPage.style.display="none"; loginPage.style.display="block"; appPage.style.display="none"; }
 function showApp(){ signupPage.style.display="none"; loginPage.style.display="none"; appPage.style.display="block"; }
 
-// SIGNUP
+// ================= SIGNUP
 async function signup(){
     const res = await fetch("/signup",{
         method:"POST",
@@ -153,7 +147,7 @@ async function signup(){
     alert(d.message || d.error);
 }
 
-// LOGIN
+// ================= LOGIN
 async function login(){
     const res = await fetch("/login",{
         method:"POST",
@@ -174,103 +168,134 @@ async function login(){
     }
 }
 
-// 🔥 FINAL FORMAT FUNCTION
+// ================= 🔥 FINAL PARSER
 function formatToCards(text){
 
-    text = text.replace(/\*\*/g, "").replace(/#/g, "");
+    text = text.replace(/\*\*/g,"");
 
     const sections = {
-        "Strategy": [],
-        "Growth Plan": [],
-        "Do's & Don'ts": {do:[], dont:[]},
-        "Captions": [],
-        "Hashtags": [],
-        "CTA": []
+        strategy: [],
+        growth: [],
+        do: [],
+        dont: [],
+        captions: [],
+        hashtags: [],
+        cta: []
     };
 
     let current = "";
-    let mode = "";
 
     text.split("\n").forEach(line => {
 
-        let l = line.trim().toLowerCase();
+        let l = line.trim();
 
-        if(l.includes("strategy")) current="Strategy";
-        else if(l.includes("growth")) current="Growth Plan";
-        else if(l.includes("do") && l.includes("don't")) current="Do's & Don'ts";
-        else if(l.includes("caption")) current="Captions";
-        else if(l.includes("hashtag")) current="Hashtags";
-        else if(l.includes("cta")) current="CTA";
+        if(!l) return;
 
-        else if(current === "Do's & Don'ts"){
+        let lower = l.toLowerCase();
 
-            if(l.includes("do")) mode="do";
-            else if(l.includes("don't")) mode="dont";
-            else if(mode && line.trim()){
-                sections[current][mode].push(line.trim());
-            }
-
+        // SECTION DETECTION
+        if(lower.startsWith("1.") || lower.includes("strategy")){
+            current = "strategy";
+            return;
         }
-        else if(current && line.trim()){
+        if(lower.startsWith("2.") || lower.includes("growth")){
+            current = "growth";
+            return;
+        }
+        if(lower.includes("do") && lower.includes("don't")){
+            current = "do";
+            return;
+        }
+        if(lower.includes("caption")){
+            current = "captions";
+            return;
+        }
+        if(lower.includes("hashtag")){
+            current = "hashtags";
+            return;
+        }
+        if(lower.includes("cta")){
+            current = "cta";
+            return;
+        }
 
-            // 🔥 Hashtag fix
-            if(current === "Hashtags"){
-                let tag = line.replace(/[-•]/g,"").trim();
-                if(tag && !tag.startsWith("#")) tag = "#"+tag;
-                sections[current].push(tag);
-            }else{
-                sections[current].push(line.trim());
+        // DO / DON'T SPLIT
+        if(current === "do"){
+            if(lower.includes("don't")){
+                current = "dont";
+                return;
             }
+            sections.do.push(l);
+            return;
+        }
+
+        if(current === "dont"){
+            sections.dont.push(l);
+            return;
+        }
+
+        // NORMAL SECTIONS
+        if(current === "hashtags"){
+            let tag = l.replace(/[-•]/g,"").trim();
+            if(!tag.startsWith("#")) tag = "#"+tag;
+            sections.hashtags.push(tag);
+        } else {
+            sections[current]?.push(l);
         }
 
     });
 
     let html = "";
 
-    // Strategy / Growth / Captions / CTA
-    ["Strategy","Growth Plan","Captions","CTA"].forEach(title=>{
-        if(sections[title].length){
-            html += `<div class="card"><h3>${title}</h3>`;
-            sections[title].forEach(i=> html+=`<p>• ${i}</p>`);
-            html += `</div>`;
-        }
-    });
+    function createCard(title, arr){
+        if(!arr.length) return "";
+        return `<div class="card">
+            <h3>${title}</h3>
+            ${arr.map(i=>`<p>• ${i}</p>`).join("")}
+        </div>`;
+    }
 
-    // Do & Don't
-    if(sections["Do's & Don'ts"].do.length || sections["Do's & Don'ts"].dont.length){
+    html += createCard("Strategy", sections.strategy);
+    html += createCard("Growth Plan", sections.growth);
+
+    // DO & DON'T
+    if(sections.do.length || sections.dont.length){
         html += `<div class="card"><h3>Do's & Don'ts</h3>`;
 
-        if(sections["Do's & Don'ts"].do.length){
+        if(sections.do.length){
             html += `<p><b>✅ Do:</b></p>`;
-            sections["Do's & Don'ts"].do.forEach(i=> html+=`<p>• ${i}</p>`);
+            sections.do.forEach(i=> html+=`<p>• ${i}</p>`);
         }
 
-        if(sections["Do's & Don'ts"].dont.length){
+        if(sections.dont.length){
             html += `<p><b>❌ Don't:</b></p>`;
-            sections["Do's & Don'ts"].dont.forEach(i=> html+=`<p>• ${i}</p>`);
+            sections.dont.forEach(i=> html+=`<p>• ${i}</p>`);
         }
 
         html += `</div>`;
     }
 
-    // Hashtags
-    if(sections["Hashtags"].length){
+    html += createCard("Captions", sections.captions);
+
+    // HASHTAGS
+    if(sections.hashtags.length){
         html += `<div class="card"><h3>Hashtags</h3>`;
-        sections["Hashtags"].forEach(i=> html+=`<p>${i}</p>`);
+        sections.hashtags.forEach(i=> html+=`<p>${i}</p>`);
         html += `</div>`;
     }
+
+    // ✅ CTA FIX
+    html += createCard("CTA", sections.cta);
 
     return html;
 }
 
-// GENERATE
+// ================= GENERATE
 async function generate(){
 
     const token = localStorage.getItem("token");
 
     chat.innerHTML = `<div class="loader">🤖 AI is thinking...</div>`;
-
-    await new Promise(r => setTimeout(r, 800));
 
     const res = await fetch("/generate",{
         method:"POST",
@@ -297,37 +322,28 @@ async function generate(){
     }
 }
 
-// COPY
+// ================= COPY
 function copyText(){
     navigator.clipboard.writeText(lastResponse);
     alert("Copied!");
 }
 
-// PDF
+// ================= PDF
 function downloadPDF(){
-
-    const element = document.createElement("div");
-
-    element.innerHTML = `
-        <div style="padding:20px;font-family:Arial;">
-            <h2>AI Marketing Plan</h2>
-            <pre style="white-space:pre-wrap;">${lastResponse}</pre>
-        </div>
-    `;
-
-    document.body.appendChild(element);
-
-    html2pdf().from(element).save("marketing-plan.pdf")
-    .then(()=>document.body.removeChild(element));
+    const el = document.createElement("div");
+    el.innerHTML = `<pre>${lastResponse}</pre>`;
+    document.body.appendChild(el);
+    html2pdf().from(el).save("plan.pdf")
+    .then(()=>document.body.removeChild(el));
 }
 
-// LOGOUT
+// ================= LOGOUT
 function logout(){
     localStorage.removeItem("token");
     location.reload();
 }
 
-// AUTO LOAD
+// ================= AUTO LOAD
 window.onload = ()=>{
     const token = localStorage.getItem("token");
     if(token) showApp();
