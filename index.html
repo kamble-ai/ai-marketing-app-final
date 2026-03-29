@@ -13,47 +13,55 @@ body {
     text-align:center;
 }
 
+/* BOX */
 .box {
     background:white;
     color:black;
     padding:20px;
-    border-radius:10px;
-    max-width:700px;
+    border-radius:12px;
+    max-width:900px;
     margin:auto;
 }
 
-/* CHAT */
+/* CHAT AREA */
 .chat-box {
     background:#020617;
-    padding:15px;
-    border-radius:10px;
-    margin-bottom:10px;
-}
-
-/* MESSAGE */
-.msg {
-    margin:10px;
-    padding:10px;
-    border-radius:8px;
+    padding:20px;
+    border-radius:12px;
+    margin-bottom:15px;
 }
 
 /* CARD UI */
 .card {
-    background:#111827;
-    color:white;
-    padding:15px;
-    border-radius:10px;
-    margin:10px 0;
+    background:#1e293b;
+    padding:18px;
+    margin:15px 0;
+    border-radius:12px;
     text-align:left;
 }
 
 .card h3 {
-    text-align:center;
     color:#22c55e;
+    margin-bottom:10px;
 }
 
 .card p {
     margin:6px 0;
+    line-height:1.6;
+}
+
+/* LOADER */
+.loader {
+    text-align:center;
+    font-size:18px;
+    color:#22c55e;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0% {opacity:0.3}
+    50% {opacity:1}
+    100% {opacity:0.3}
 }
 
 /* INPUT */
@@ -63,11 +71,10 @@ input,select {
     margin:10px;
 }
 
-/* BUTTON */
 button {
     padding:10px;
     margin:5px;
-    background:#16a34a;
+    background:green;
     color:white;
     border:none;
     cursor:pointer;
@@ -81,7 +88,6 @@ button {
 
 <div class="box">
 
-<!-- SIGNUP -->
 <div id="signupPage">
 <h3>Signup</h3>
 <input id="signupUsername" placeholder="Username">
@@ -91,7 +97,6 @@ button {
 <p onclick="showLogin()" style="cursor:pointer;color:blue">Login</p>
 </div>
 
-<!-- LOGIN -->
 <div id="loginPage" style="display:none">
 <h3>Login</h3>
 <input id="loginUsername">
@@ -100,10 +105,9 @@ button {
 <p onclick="showSignup()" style="cursor:pointer;color:blue">Signup</p>
 </div>
 
-<!-- APP -->
 <div id="appPage" style="display:none">
 
-<div id="chat" class="chat-box"></div>
+<div class="chat-box" id="chat"></div>
 
 <input id="product" placeholder="Product">
 <input id="audience" placeholder="Audience">
@@ -130,23 +134,11 @@ button {
 let lastResponse = "";
 
 // PAGE SWITCH
-function showSignup(){
-    signupPage.style.display="block";
-    loginPage.style.display="none";
-    appPage.style.display="none";
-}
-function showLogin(){
-    signupPage.style.display="none";
-    loginPage.style.display="block";
-    appPage.style.display="none";
-}
-function showApp(){
-    signupPage.style.display="none";
-    loginPage.style.display="none";
-    appPage.style.display="block";
-}
+function showSignup(){ signupPage.style.display="block"; loginPage.style.display="none"; appPage.style.display="none"; }
+function showLogin(){ signupPage.style.display="none"; loginPage.style.display="block"; appPage.style.display="none"; }
+function showApp(){ signupPage.style.display="none"; loginPage.style.display="none"; appPage.style.display="block"; }
 
-// AUTH
+// SIGNUP
 async function signup(){
     const res = await fetch("/signup",{
         method:"POST",
@@ -161,6 +153,7 @@ async function signup(){
     alert(d.message || d.error);
 }
 
+// LOGIN
 async function login(){
     const res = await fetch("/login",{
         method:"POST",
@@ -181,46 +174,49 @@ async function login(){
     }
 }
 
-// 🔥 ADD MESSAGE FIXED
-function addMessage(text, type, isHTML=false){
-    const div = document.createElement("div");
-    div.className = "msg " + type;
-
-    if(isHTML){
-        div.innerHTML = text;  // ✅ FIX
-    } else {
-        div.innerText = text;
-    }
-
-    chat.appendChild(div);
-}
-
-// 🔥 FORMAT CARDS
+// 🔥 FORMAT TO CARDS (FIXED)
 function formatToCards(text){
 
-    const sections = text.split(/\d+\./).filter(s=>s.trim());
+    text = text
+        .replace(/\*\*/g, "")
+        .replace(/#/g, "");
 
-    const titles = [
-        "Strategy",
-        "Growth Plan",
-        "Do's & Don'ts",
-        "Captions",
-        "Hashtags",
-        "CTA"
-    ];
+    const sections = {
+        "Strategy": [],
+        "Growth Plan": [],
+        "Do's & Don'ts": [],
+        "Captions": [],
+        "Hashtags": [],
+        "CTA": []
+    };
+
+    let current = "";
+
+    text.split("\n").forEach(line => {
+
+        const l = line.toLowerCase();
+
+        if(l.includes("strategy")) current="Strategy";
+        else if(l.includes("growth")) current="Growth Plan";
+        else if(l.includes("do") && l.includes("don't")) current="Do's & Don'ts";
+        else if(l.includes("caption")) current="Captions";
+        else if(l.includes("hashtag")) current="Hashtags";
+        else if(l.includes("cta")) current="CTA";
+        else if(current && line.trim()){
+            sections[current].push(line.trim());
+        }
+
+    });
 
     let html = "";
 
-    sections.forEach((sec,i)=>{
-        const lines = sec.trim().split("\n").filter(l=>l.trim());
+    Object.keys(sections).forEach(title => {
+        if(sections[title].length === 0) return;
 
-        html += `<div class="card">`;
-        html += `<h3>${titles[i] || "Section"}</h3>`;
-
-        lines.forEach(line=>{
-            html += `<p>• ${line}</p>`;
+        html += `<div class="card"><h3>${title}</h3>`;
+        sections[title].forEach(item=>{
+            html += `<p>• ${item}</p>`;
         });
-
         html += `</div>`;
     });
 
@@ -232,9 +228,12 @@ async function generate(){
 
     const token = localStorage.getItem("token");
 
-    chat.innerHTML = ""; // clear
+    chat.innerHTML = "";
 
-    addMessage("Generating...","ai");
+    // 🔥 SHOW THINKING UI
+    chat.innerHTML = `<div class="loader">🤖 AI is thinking...</div>`;
+
+    await new Promise(r => setTimeout(r, 800)); // UX delay
 
     const res = await fetch("/generate",{
         method:"POST",
@@ -255,11 +254,9 @@ async function generate(){
 
     if(d.campaign){
         lastResponse = d.campaign;
-
-        const formatted = formatToCards(d.campaign);
-        addMessage(formatted, "ai", true); // 🔥 FIX
+        chat.innerHTML = formatToCards(d.campaign);
     }else{
-        addMessage("❌ Error","ai");
+        chat.innerHTML = "<p style='color:red'>❌ Error</p>";
     }
 }
 
@@ -271,15 +268,25 @@ function copyText(){
 
 // PDF
 function downloadPDF(){
+
+    if(!lastResponse){
+        alert("Generate first");
+        return;
+    }
+
     const element = document.createElement("div");
-    element.innerHTML = formatToCards(lastResponse);
+
+    element.innerHTML = `
+        <div style="padding:20px;font-family:Arial;">
+            <h2>AI Marketing Plan</h2>
+            <pre style="white-space:pre-wrap;">${lastResponse}</pre>
+        </div>
+    `;
 
     document.body.appendChild(element);
 
-    setTimeout(()=>{
-        html2pdf().from(element).save("marketing-plan.pdf")
-        .then(()=>document.body.removeChild(element));
-    },300);
+    html2pdf().from(element).save("marketing-plan.pdf")
+    .then(()=>document.body.removeChild(element));
 }
 
 // LOGOUT
