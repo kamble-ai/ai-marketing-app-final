@@ -3,6 +3,8 @@
 <head>
 <title>AI Marketing Generator</title>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <style>
 body {
     font-family: 'Segoe UI';
@@ -11,183 +13,300 @@ body {
     text-align:center;
 }
 
-/* CARD */
 .box {
     background:white;
     color:black;
-    padding:30px;
-    border-radius:14px;
-    max-width:700px;
-    margin:20px auto;
+    padding:20px;
+    border-radius:12px;
+    max-width:900px;
+    margin:auto;
 }
 
-/* INPUT */
-input, select {
+.chat-box {
+    background:#020617;
+    padding:20px;
+    border-radius:12px;
+    margin-bottom:15px;
+    overflow:hidden;
+}
+
+/* CARD FIX */
+.card {
+    background:#1e293b;
+    padding:20px;
+    margin:15px 0;
+    border-radius:12px;
+    text-align:left;
+    width:100%;
+    box-sizing:border-box;
+}
+
+.card h3 {
+    color:#22c55e;
+}
+
+.card p {
+    color:#e2e8f0;
+    line-height:1.6;
+    font-size:14px;
+    word-wrap:break-word;
+}
+
+/* LOADER */
+.loader {
+    color:#22c55e;
+    font-size:18px;
+    animation: blink 1s infinite;
+}
+@keyframes blink {
+    0%{opacity:0.3}
+    50%{opacity:1}
+    100%{opacity:0.3}
+}
+
+input,select {
     width:90%;
-    padding:12px;
+    padding:10px;
     margin:10px;
-    border-radius:8px;
-    border:2px solid #ccc;
-    outline:none;
-    transition:0.3s;
 }
 
-input:focus {
-    border-color:#22c55e;
-    box-shadow:0 0 10px #22c55e;
-}
-
-/* BUTTON */
 button {
-    padding:12px 18px;
-    margin:10px;
-    background:#22c55e;
+    padding:10px;
+    margin:5px;
+    background:green;
     color:white;
     border:none;
-    border-radius:8px;
     cursor:pointer;
 }
-
-.hidden {
-    display:none;
-}
 </style>
-
 </head>
 
 <body>
 
 <h2>🚀 AI Marketing Generator</h2>
 
-<!-- LOGIN -->
-<div id="loginPage" class="box">
+<div class="box">
+
+<div id="signupPage">
+<h3>Signup</h3>
+<input id="signupUsername">
+<input id="signupPassword" type="password">
+<input id="confirmPassword" type="password">
+<button onclick="signup()">Signup</button>
+<p onclick="showLogin()" style="cursor:pointer;color:blue">Login</p>
+</div>
+
+<div id="loginPage" style="display:none">
 <h3>Login</h3>
-<input id="loginUsername" placeholder="Username">
-<input id="loginPassword" type="password" placeholder="Password">
+<input id="loginUsername">
+<input id="loginPassword" type="password">
 <button onclick="login()">Login</button>
-<p id="loginMsg"></p>
+<p onclick="showSignup()" style="cursor:pointer;color:blue">Signup</p>
 </div>
 
-<!-- MAIN APP -->
-<div id="appPage" class="hidden">
+<div id="appPage" style="display:none">
 
-<div class="box">
-<h3>Welcome 🎉</h3>
-<button onclick="logout()">Logout</button>
-</div>
+<div id="chat" class="chat-box"></div>
 
-<div class="box">
-<h3>Generate Marketing Plan</h3>
+<input id="product" placeholder="Product">
+<input id="audience" placeholder="Audience">
 
-<input id="product" placeholder="Product (e.g. Gym Membership)">
-<input id="audience" placeholder="Target Audience">
 <select id="platform">
 <option>Instagram</option>
-<option>LinkedIn</option>
-<option>YouTube</option>
+<option>Facebook Ads</option>
+<option>Google Ads</option>
+<option>YouTube Shorts</option>
+<option>YouTube Long</option>
 </select>
 
 <button onclick="generate()">Generate</button>
+<button onclick="copyText()">Copy</button>
+<button onclick="downloadPDF()">PDF</button>
+<button onclick="logout()">Logout</button>
+
 </div>
-
-<div id="result" class="box hidden"></div>
-
 </div>
 
 <script>
 
-// ✅ CHECK LOGIN ON LOAD
-window.onload = function(){
-    const token = localStorage.getItem("token");
+let lastResponse = "";
 
-    if(token){
+// ================= PAGE SWITCH
+function showSignup(){ signupPage.style.display="block"; loginPage.style.display="none"; appPage.style.display="none"; }
+function showLogin(){ signupPage.style.display="none"; loginPage.style.display="block"; appPage.style.display="none"; }
+function showApp(){ signupPage.style.display="none"; loginPage.style.display="none"; appPage.style.display="block"; }
+
+// ================= SIGNUP
+async function signup(){
+    const res = await fetch("/signup",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            username:signupUsername.value,
+            password:signupPassword.value,
+            confirm_password:confirmPassword.value
+        })
+    });
+    const d = await res.json();
+    alert(d.message || d.error);
+}
+
+// ================= LOGIN
+async function login(){
+    const res = await fetch("/login",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            username:loginUsername.value,
+            password:loginPassword.value
+        })
+    });
+
+    const d = await res.json();
+
+    if(d.token){
+        localStorage.setItem("token", d.token);
         showApp();
     } else {
-        showLogin();
+        alert(d.error);
     }
 }
 
-// SHOW LOGIN
-function showLogin(){
-    loginPage.classList.remove("hidden");
-    appPage.classList.add("hidden");
-}
+// ================= 🔥 FINAL PARSER
+function formatToCards(text){
 
-// SHOW APP
-function showApp(){
-    loginPage.classList.add("hidden");
-    appPage.classList.remove("hidden");
-}
+    // REMOVE ALL *
+    text = text.replace(/\*/g,"");
 
-// LOGIN
-async function login(){
+    const sections = {
+        strategy: [],
+        growth: [],
+        do: [],
+        dont: [],
+        captions: [],
+        hashtags: [],
+        cta: []
+    };
 
-    const username = loginUsername.value;
-    const password = loginPassword.value;
+    let current = "";
 
-    if(!username || !password){
-        loginMsg.innerText = "Enter details";
-        return;
-    }
+    text.split("\n").forEach(line => {
 
-    loginMsg.innerText = "Logging in...";
+        let l = line.trim();
+        if(!l) return;
 
-    try {
-        const res = await fetch("/login",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({username,password})
-        });
+        let lower = l.toLowerCase();
 
-        const data = await res.json();
+        // STRICT SECTION LOCK
+        if(lower.includes("strategy")) { current="strategy"; return; }
+        if(lower.includes("growth")) { current="growth"; return; }
+        if(lower.includes("do's") || lower === "do") { current="do"; return; }
+        if(lower.includes("don't")) { current="dont"; return; }
+        if(lower.includes("captions")) { current="captions"; return; }
+        if(lower.includes("hashtag")) { current="hashtags"; return; }
+        if(lower.includes("cta") || lower.includes("call to action")) { current="cta"; return; }
 
-        if(data.token){
-            localStorage.setItem("token", data.token);
-            showApp(); // ✅ DIRECT SWITCH (NO RELOAD)
-        } else {
-            loginMsg.innerText = "Invalid login";
+        // HASHTAG DETECTION (ANYWHERE)
+        if(current === "hashtags"){
+            let tags = l.match(/#\w+/g);
+            if(tags){
+                sections.hashtags.push(...tags);
+            }
+            return;
         }
 
-    } catch(err){
-        loginMsg.innerText = "Server error";
-        console.log(err);
+        // STORE
+        if(current){
+            sections[current].push(l);
+        }
+
+    });
+
+    function createCard(title, arr){
+        if(!arr.length) return "";
+        return `<div class="card">
+            <h3>${title}</h3>
+            ${arr.map(i=>`<p>• ${i}</p>`).join("")}
+        </div>`;
     }
+
+    let html = "";
+
+    html += createCard("Strategy", sections.strategy);
+    html += createCard("Growth Plan", sections.growth);
+    html += createCard("✅ Do", sections.do);
+    html += createCard("❌ Don't", sections.dont);
+    html += createCard("Captions", sections.captions);
+
+    if(sections.hashtags.length){
+        html += `<div class="card"><h3>Hashtags</h3>`;
+        sections.hashtags.forEach(i=> html+=`<p>${i}</p>`);
+        html += `</div>`;
+    }
+
+    html += createCard("CTA", sections.cta);
+
+    return html;
 }
 
-// LOGOUT
-function logout(){
-    localStorage.removeItem("token");
-    showLogin();
-}
-
-// GENERATE
+// ================= GENERATE
 async function generate(){
 
-    const product = document.getElementById("product").value;
-    const audience = document.getElementById("audience").value;
-    const platform = document.getElementById("platform").value;
+    const token = localStorage.getItem("token");
 
-    result.classList.remove("hidden");
-    result.innerHTML = "🤖 AI is thinking...";
+    chat.innerHTML = `<div class="loader">🤖 AI is thinking...</div>`;
 
-    try {
+    const res = await fetch("/generate",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json",
+            "Authorization":"Bearer "+token
+        },
+        body:JSON.stringify({
+            product:product.value,
+            audience:audience.value,
+            platform:platform.value
+        })
+    });
 
-        const res = await fetch("/generate",{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json",
-                "Authorization":"Bearer " + localStorage.getItem("token")
-            },
-            body:JSON.stringify({product,audience,platform})
-        });
+    const d = await res.json();
 
-        const data = await res.json();
+    chat.innerHTML = "";
 
-        result.innerHTML = "<pre>"+JSON.stringify(data,null,2)+"</pre>";
-
-    } catch(err){
-        result.innerHTML = "Error generating";
+    if(d.campaign){
+        lastResponse = d.campaign;
+        chat.innerHTML = formatToCards(d.campaign);
+    }else{
+        chat.innerHTML = "<p style='color:red'>❌ Error</p>";
     }
+}
+
+// ================= COPY
+function copyText(){
+    navigator.clipboard.writeText(lastResponse);
+    alert("Copied!");
+}
+
+// ================= PDF
+function downloadPDF(){
+    const el = document.createElement("div");
+    el.innerHTML = `<pre>${lastResponse}</pre>`;
+    document.body.appendChild(el);
+    html2pdf().from(el).save("plan.pdf")
+    .then(()=>document.body.removeChild(el));
+}
+
+// ================= LOGOUT
+function logout(){
+    localStorage.removeItem("token");
+    location.reload();
+}
+
+// ================= AUTO LOAD
+window.onload = ()=>{
+    const token = localStorage.getItem("token");
+    if(token) showApp();
+    else showSignup();
 }
 
 </script>
