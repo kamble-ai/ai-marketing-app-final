@@ -50,6 +50,18 @@ button {
     border:none;
     cursor:pointer;
 }
+
+/* 🔥 TYPING DOTS */
+.typing::after {
+    content: '...';
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0% { opacity:0 }
+    50% { opacity:1 }
+    100% { opacity:0 }
+}
 </style>
 </head>
 
@@ -59,7 +71,6 @@ button {
 
 <div class="box">
 
-<!-- SIGNUP -->
 <div id="signupPage">
 <h3>Signup</h3>
 <input id="signupUsername" placeholder="Username">
@@ -69,7 +80,6 @@ button {
 <p onclick="showLogin()" style="cursor:pointer;color:blue">Login</p>
 </div>
 
-<!-- LOGIN -->
 <div id="loginPage" style="display:none">
 <h3>Login</h3>
 <input id="loginUsername">
@@ -78,7 +88,6 @@ button {
 <p onclick="showSignup()" style="cursor:pointer;color:blue">Signup</p>
 </div>
 
-<!-- APP -->
 <div id="appPage" style="display:none">
 
 <div class="chat-box" id="chat"></div>
@@ -107,7 +116,7 @@ button {
 
 let lastResponse = "";
 
-// =================== PAGE SWITCH
+// PAGE SWITCH
 function showSignup(){
     signupPage.style.display="block";
     loginPage.style.display="none";
@@ -124,7 +133,7 @@ function showApp(){
     appPage.style.display="block";
 }
 
-// =================== SIGNUP
+// SIGNUP
 async function signup(){
     const res = await fetch("/signup",{
         method:"POST",
@@ -139,7 +148,7 @@ async function signup(){
     alert(d.message || d.error);
 }
 
-// =================== LOGIN
+// LOGIN
 async function login(){
     const res = await fetch("/login",{
         method:"POST",
@@ -160,15 +169,33 @@ async function login(){
     }
 }
 
-// =================== ADD MESSAGE
-function addMessage(text, type){
+// ADD MESSAGE
+function addMessage(text, type, className=""){
     const div = document.createElement("div");
-    div.className="msg "+type;
+    div.className="msg "+type+" "+className;
     div.innerText=text;
     chat.appendChild(div);
+    return div;
 }
 
-// =================== GENERATE (FIXED)
+// 🔥 TYPEWRITER EFFECT
+function typeWriter(element, text, speed=15){
+    let i = 0;
+    element.innerText = "";
+
+    function typing(){
+        if(i < text.length){
+            element.innerText += text.charAt(i);
+            i++;
+            chat.scrollTop = chat.scrollHeight;
+            setTimeout(typing, speed);
+        }
+    }
+
+    typing();
+}
+
+// GENERATE
 async function generate(){
 
     const token = localStorage.getItem("token");
@@ -178,10 +205,10 @@ async function generate(){
         return;
     }
 
-    // ✅ CLEAR OLD RESULT
     chat.innerHTML = "";
 
-    addMessage("Generating...","ai");
+    // typing loader
+    const loading = addMessage("AI is thinking", "ai", "typing");
 
     try{
         const res = await fetch("/generate",{
@@ -199,28 +226,31 @@ async function generate(){
 
         const d = await res.json();
 
+        loading.remove();
+
         if(d.campaign){
             lastResponse = d.campaign;
-            chat.innerHTML = ""; // remove loading
-            addMessage(d.campaign,"ai");
-        }else{
-            chat.innerHTML = "";
+
+            const msg = addMessage("", "ai");
+            typeWriter(msg, d.campaign); // 🔥 typing effect
+
+        } else {
             addMessage("❌ Error","ai");
         }
 
     }catch(err){
-        chat.innerHTML = "";
+        loading.remove();
         addMessage("❌ Server error","ai");
     }
 }
 
-// =================== COPY
+// COPY
 function copyText(){
     navigator.clipboard.writeText(lastResponse);
     alert("Copied!");
 }
 
-// =================== PDF (FINAL FIX)
+// PDF
 function downloadPDF(){
 
     if(!lastResponse){
@@ -239,7 +269,7 @@ function downloadPDF(){
 
     element.innerHTML = `
         <h2 style="text-align:center;">AI Marketing Plan</h2>
-        <div style="white-space: pre-wrap; font-size:14px;">
+        <div style="white-space: pre-wrap;">
             ${lastResponse}
         </div>
     `;
@@ -247,28 +277,18 @@ function downloadPDF(){
     document.body.appendChild(element);
 
     setTimeout(() => {
-        html2pdf()
-        .set({
-            margin:10,
-            filename:"marketing-plan.pdf",
-            html2canvas:{ scale:2 },
-            jsPDF:{ unit:"mm", format:"a4" }
-        })
-        .from(element)
-        .save()
-        .then(()=>{
-            document.body.removeChild(element);
-        });
+        html2pdf().from(element).save("marketing-plan.pdf")
+        .then(()=> document.body.removeChild(element));
     }, 300);
 }
 
-// =================== LOGOUT
+// LOGOUT
 function logout(){
     localStorage.removeItem("token");
     location.reload();
 }
 
-// =================== AUTO LOAD
+// AUTO LOAD
 window.onload = ()=>{
     const token = localStorage.getItem("token");
     if(token) showApp();
