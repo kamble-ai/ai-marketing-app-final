@@ -3,8 +3,6 @@
 <head>
 <title>AI Marketing Generator</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
 <style>
 body {
     font-family: 'Segoe UI';
@@ -13,72 +11,95 @@ body {
     text-align:center;
 }
 
+/* MAIN BOX */
 .box {
     background:white;
     color:black;
-    padding:20px;
-    border-radius:12px;
-    max-width:900px;
+    padding:30px;
+    border-radius:14px;
+    max-width:500px;
     margin:auto;
+    transition:0.4s;
 }
 
-.chat-box {
-    background:#020617;
-    padding:20px;
-    border-radius:12px;
-    margin-bottom:15px;
-    overflow:hidden;
-}
-
-/* CARD FIX */
-.card {
-    background:#1e293b;
-    padding:20px;
-    margin:15px 0;
-    border-radius:12px;
-    text-align:left;
-    width:100%;
-    box-sizing:border-box;
-}
-
-.card h3 {
-    color:#22c55e;
-}
-
-.card p {
-    color:#e2e8f0;
-    line-height:1.6;
-    font-size:14px;
-    word-wrap:break-word;
-}
-
-/* LOADER */
-.loader {
-    color:#22c55e;
-    font-size:18px;
-    animation: blink 1s infinite;
-}
-@keyframes blink {
-    0%{opacity:0.3}
-    50%{opacity:1}
-    100%{opacity:0.3}
-}
-
-input,select {
+/* INPUT */
+input {
     width:90%;
-    padding:10px;
-    margin:10px;
+    padding:12px;
+    margin:12px;
+    border-radius:8px;
+    border:2px solid #ccc;
+    outline:none;
+    transition:0.3s;
+    font-size:14px;
 }
 
+/* GLOW EFFECT */
+input:focus {
+    border-color:#22c55e;
+    box-shadow:0 0 10px #22c55e, 0 0 20px rgba(34,197,94,0.5);
+    transform:scale(1.02);
+}
+
+/* TYPING EFFECT */
+input.typing {
+    animation: typingEffect 0.2s ease;
+}
+@keyframes typingEffect {
+    0% { transform:scale(1); }
+    50% { transform:scale(1.05); }
+    100% { transform:scale(1); }
+}
+
+/* BUTTON */
 button {
-    padding:10px;
-    margin:5px;
-    background:green;
+    padding:12px 18px;
+    margin:10px;
+    background:#22c55e;
     color:white;
     border:none;
+    border-radius:8px;
     cursor:pointer;
+    transition:0.2s;
+}
+
+button:active {
+    transform:scale(0.92);
+    box-shadow:0 0 15px #22c55e;
+}
+
+button:hover {
+    background:#16a34a;
+    box-shadow:0 0 10px #22c55e;
+}
+
+/* LINKS */
+p {
+    cursor:pointer;
+    color:#2563eb;
+    transition:0.2s;
+}
+p:hover {
+    color:#1d4ed8;
+    text-decoration:underline;
+}
+
+/* PAGE ANIMATION */
+.page {
+    animation: fadeSlide 0.4s ease;
+}
+@keyframes fadeSlide {
+    from {
+        opacity:0;
+        transform:translateY(20px);
+    }
+    to {
+        opacity:1;
+        transform:translateY(0);
+    }
 }
 </style>
+
 </head>
 
 <body>
@@ -87,54 +108,72 @@ button {
 
 <div class="box">
 
-<div id="signupPage">
+<!-- SIGNUP -->
+<div id="signupPage" class="page">
 <h3>Signup</h3>
-<input id="signupUsername">
-<input id="signupPassword" type="password">
-<input id="confirmPassword" type="password">
+<input id="signupUsername" placeholder="Username">
+<input id="signupPassword" type="password" placeholder="Password">
+<input id="confirmPassword" type="password" placeholder="Confirm Password">
 <button onclick="signup()">Signup</button>
-<p onclick="showLogin()" style="cursor:pointer;color:blue">Login</p>
+<p onclick="showLogin()">Already have account? Login</p>
 </div>
 
+<!-- LOGIN -->
 <div id="loginPage" style="display:none">
 <h3>Login</h3>
-<input id="loginUsername">
-<input id="loginPassword" type="password">
+<input id="loginUsername" placeholder="Username">
+<input id="loginPassword" type="password" placeholder="Password">
 <button onclick="login()">Login</button>
-<p onclick="showSignup()" style="cursor:pointer;color:blue">Signup</p>
+<p onclick="showSignup()">New user? Signup</p>
 </div>
 
+<!-- APP -->
 <div id="appPage" style="display:none">
-
-<div id="chat" class="chat-box"></div>
-
-<input id="product" placeholder="Product">
-<input id="audience" placeholder="Audience">
-
-<select id="platform">
-<option>Instagram</option>
-<option>Facebook Ads</option>
-<option>Google Ads</option>
-<option>YouTube Shorts</option>
-<option>YouTube Long</option>
-</select>
-
-<button onclick="generate()">Generate</button>
-<button onclick="copyText()">Copy</button>
-<button onclick="downloadPDF()">PDF</button>
+<h3>Welcome 🚀</h3>
 <button onclick="logout()">Logout</button>
-
 </div>
+
 </div>
 
 <script>
 
-let lastResponse = "";
+// ================= INPUT TYPING EFFECT
+document.querySelectorAll("input").forEach(input=>{
+    input.addEventListener("input", ()=>{
+        input.classList.add("typing");
+        setTimeout(()=>input.classList.remove("typing"), 200);
+    });
+});
 
-// ================= PAGE SWITCH
-function showSignup(){ signupPage.style.display="block"; loginPage.style.display="none"; appPage.style.display="none"; }
-function showLogin(){ signupPage.style.display="none"; loginPage.style.display="block"; appPage.style.display="none"; }
-function showApp(){ signupPage.style.display="none"; loginPage.style.display="none"; appPage.style.display="block"; }
+// ================= PAGE ANIMATION
+function applyPageAnimation(pageId){
+    const page = document.getElementById(pageId);
+    page.classList.remove("page");
+    void page.offsetWidth;
+    page.classList.add("page");
+}
+
+// ================= SWITCH PAGES
+function showSignup(){
+    signupPage.style.display="block";
+    loginPage.style.display="none";
+    appPage.style.display="none";
+    applyPageAnimation("signupPage");
+}
+
+function showLogin(){
+    signupPage.style.display="none";
+    loginPage.style.display="block";
+    appPage.style.display="none";
+    applyPageAnimation("loginPage");
+}
+
+function showApp(){
+    signupPage.style.display="none";
+    loginPage.style.display="none";
+    appPage.style.display="block";
+    applyPageAnimation("appPage");
+}
 
 // ================= SIGNUP
 async function signup(){
@@ -147,6 +186,7 @@ async function signup(){
             confirm_password:confirmPassword.value
         })
     });
+
     const d = await res.json();
     alert(d.message || d.error);
 }
@@ -170,130 +210,6 @@ async function login(){
     } else {
         alert(d.error);
     }
-}
-
-// ================= 🔥 FINAL PARSER
-function formatToCards(text){
-
-    // REMOVE ALL *
-    text = text.replace(/\*/g,"");
-
-    const sections = {
-        strategy: [],
-        growth: [],
-        do: [],
-        dont: [],
-        captions: [],
-        hashtags: [],
-        cta: []
-    };
-
-    let current = "";
-
-    text.split("\n").forEach(line => {
-
-        let l = line.trim();
-        if(!l) return;
-
-        let lower = l.toLowerCase();
-
-        // STRICT SECTION LOCK
-        if(lower.includes("strategy")) { current="strategy"; return; }
-        if(lower.includes("growth")) { current="growth"; return; }
-        if(lower.includes("do's") || lower === "do") { current="do"; return; }
-        if(lower.includes("don't")) { current="dont"; return; }
-        if(lower.includes("captions")) { current="captions"; return; }
-        if(lower.includes("hashtag")) { current="hashtags"; return; }
-        if(lower.includes("cta") || lower.includes("call to action")) { current="cta"; return; }
-
-        // HASHTAG DETECTION (ANYWHERE)
-        if(current === "hashtags"){
-            let tags = l.match(/#\w+/g);
-            if(tags){
-                sections.hashtags.push(...tags);
-            }
-            return;
-        }
-
-        // STORE
-        if(current){
-            sections[current].push(l);
-        }
-
-    });
-
-    function createCard(title, arr){
-        if(!arr.length) return "";
-        return `<div class="card">
-            <h3>${title}</h3>
-            ${arr.map(i=>`<p>• ${i}</p>`).join("")}
-        </div>`;
-    }
-
-    let html = "";
-
-    html += createCard("Strategy", sections.strategy);
-    html += createCard("Growth Plan", sections.growth);
-    html += createCard("✅ Do", sections.do);
-    html += createCard("❌ Don't", sections.dont);
-    html += createCard("Captions", sections.captions);
-
-    if(sections.hashtags.length){
-        html += `<div class="card"><h3>Hashtags</h3>`;
-        sections.hashtags.forEach(i=> html+=`<p>${i}</p>`);
-        html += `</div>`;
-    }
-
-    html += createCard("CTA", sections.cta);
-
-    return html;
-}
-
-// ================= GENERATE
-async function generate(){
-
-    const token = localStorage.getItem("token");
-
-    chat.innerHTML = `<div class="loader">🤖 AI is thinking...</div>`;
-
-    const res = await fetch("/generate",{
-        method:"POST",
-        headers:{
-            "Content-Type":"application/json",
-            "Authorization":"Bearer "+token
-        },
-        body:JSON.stringify({
-            product:product.value,
-            audience:audience.value,
-            platform:platform.value
-        })
-    });
-
-    const d = await res.json();
-
-    chat.innerHTML = "";
-
-    if(d.campaign){
-        lastResponse = d.campaign;
-        chat.innerHTML = formatToCards(d.campaign);
-    }else{
-        chat.innerHTML = "<p style='color:red'>❌ Error</p>";
-    }
-}
-
-// ================= COPY
-function copyText(){
-    navigator.clipboard.writeText(lastResponse);
-    alert("Copied!");
-}
-
-// ================= PDF
-function downloadPDF(){
-    const el = document.createElement("div");
-    el.innerHTML = `<pre>${lastResponse}</pre>`;
-    document.body.appendChild(el);
-    html2pdf().from(el).save("plan.pdf")
-    .then(()=>document.body.removeChild(el));
 }
 
 // ================= LOGOUT
