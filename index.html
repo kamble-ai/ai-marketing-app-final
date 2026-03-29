@@ -13,7 +13,6 @@ body {
     text-align:center;
 }
 
-/* BOX */
 .box {
     background:white;
     color:black;
@@ -23,7 +22,6 @@ body {
     margin:auto;
 }
 
-/* CHAT AREA */
 .chat-box {
     background:#020617;
     padding:20px;
@@ -31,7 +29,7 @@ body {
     margin-bottom:15px;
 }
 
-/* CARD UI */
+/* CARD */
 .card {
     background:#1e293b;
     padding:18px;
@@ -45,9 +43,12 @@ body {
     margin-bottom:10px;
 }
 
+/* 🔥 FIXED TEXT VISIBILITY */
 .card p {
     margin:6px 0;
-    line-height:1.6;
+    line-height:1.7;
+    color:#f1f5f9; /* bright readable */
+    font-size:14px;
 }
 
 /* LOADER */
@@ -64,7 +65,6 @@ body {
     100% {opacity:0.3}
 }
 
-/* INPUT */
 input,select {
     width:90%;
     padding:10px;
@@ -174,27 +174,26 @@ async function login(){
     }
 }
 
-// 🔥 FORMAT TO CARDS (FIXED)
+// 🔥 FINAL FORMAT FUNCTION
 function formatToCards(text){
 
-    text = text
-        .replace(/\*\*/g, "")
-        .replace(/#/g, "");
+    text = text.replace(/\*\*/g, "").replace(/#/g, "");
 
     const sections = {
         "Strategy": [],
         "Growth Plan": [],
-        "Do's & Don'ts": [],
+        "Do's & Don'ts": {do:[], dont:[]},
         "Captions": [],
         "Hashtags": [],
         "CTA": []
     };
 
     let current = "";
+    let mode = "";
 
     text.split("\n").forEach(line => {
 
-        const l = line.toLowerCase();
+        let l = line.trim().toLowerCase();
 
         if(l.includes("strategy")) current="Strategy";
         else if(l.includes("growth")) current="Growth Plan";
@@ -202,23 +201,64 @@ function formatToCards(text){
         else if(l.includes("caption")) current="Captions";
         else if(l.includes("hashtag")) current="Hashtags";
         else if(l.includes("cta")) current="CTA";
+
+        else if(current === "Do's & Don'ts"){
+
+            if(l.includes("do")) mode="do";
+            else if(l.includes("don't")) mode="dont";
+            else if(mode && line.trim()){
+                sections[current][mode].push(line.trim());
+            }
+
+        }
         else if(current && line.trim()){
-            sections[current].push(line.trim());
+
+            // 🔥 Hashtag fix
+            if(current === "Hashtags"){
+                let tag = line.replace(/[-•]/g,"").trim();
+                if(tag && !tag.startsWith("#")) tag = "#"+tag;
+                sections[current].push(tag);
+            }else{
+                sections[current].push(line.trim());
+            }
         }
 
     });
 
     let html = "";
 
-    Object.keys(sections).forEach(title => {
-        if(sections[title].length === 0) return;
-
-        html += `<div class="card"><h3>${title}</h3>`;
-        sections[title].forEach(item=>{
-            html += `<p>• ${item}</p>`;
-        });
-        html += `</div>`;
+    // Strategy / Growth / Captions / CTA
+    ["Strategy","Growth Plan","Captions","CTA"].forEach(title=>{
+        if(sections[title].length){
+            html += `<div class="card"><h3>${title}</h3>`;
+            sections[title].forEach(i=> html+=`<p>• ${i}</p>`);
+            html += `</div>`;
+        }
     });
+
+    // Do & Don't
+    if(sections["Do's & Don'ts"].do.length || sections["Do's & Don'ts"].dont.length){
+        html += `<div class="card"><h3>Do's & Don'ts</h3>`;
+
+        if(sections["Do's & Don'ts"].do.length){
+            html += `<p><b>✅ Do:</b></p>`;
+            sections["Do's & Don'ts"].do.forEach(i=> html+=`<p>• ${i}</p>`);
+        }
+
+        if(sections["Do's & Don'ts"].dont.length){
+            html += `<p><b>❌ Don't:</b></p>`;
+            sections["Do's & Don'ts"].dont.forEach(i=> html+=`<p>• ${i}</p>`);
+        }
+
+        html += `</div>`;
+    }
+
+    // Hashtags
+    if(sections["Hashtags"].length){
+        html += `<div class="card"><h3>Hashtags</h3>`;
+        sections["Hashtags"].forEach(i=> html+=`<p>${i}</p>`);
+        html += `</div>`;
+    }
 
     return html;
 }
@@ -228,12 +268,9 @@ async function generate(){
 
     const token = localStorage.getItem("token");
 
-    chat.innerHTML = "";
-
-    // 🔥 SHOW THINKING UI
     chat.innerHTML = `<div class="loader">🤖 AI is thinking...</div>`;
 
-    await new Promise(r => setTimeout(r, 800)); // UX delay
+    await new Promise(r => setTimeout(r, 800));
 
     const res = await fetch("/generate",{
         method:"POST",
@@ -268,11 +305,6 @@ function copyText(){
 
 // PDF
 function downloadPDF(){
-
-    if(!lastResponse){
-        alert("Generate first");
-        return;
-    }
 
     const element = document.createElement("div");
 
