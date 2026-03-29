@@ -13,7 +13,6 @@ body {
     text-align:center;
 }
 
-/* BOX */
 .box {
     background:white;
     color:black;
@@ -23,7 +22,6 @@ body {
     margin:auto;
 }
 
-/* CHAT */
 .chat-box {
     background:#020617;
     color:white;
@@ -38,14 +36,12 @@ body {
 .user { color:lightgreen; }
 .ai { color:white; }
 
-/* INPUT */
 input,select {
     width:90%;
     padding:10px;
     margin:10px;
 }
 
-/* BUTTON */
 button {
     padding:10px;
     margin:5px;
@@ -63,34 +59,29 @@ button {
 
 <div class="box">
 
-<!-- SIGNUP -->
 <div id="signupPage">
 <h3>Signup</h3>
 <input id="signupUsername" placeholder="Username">
-<input id="signupPassword" type="password" placeholder="Password">
-<input id="confirmPassword" type="password" placeholder="Confirm Password">
+<input id="signupPassword" type="password">
+<input id="confirmPassword" type="password">
 <button onclick="signup()">Signup</button>
-
-<p onclick="showLogin()" style="cursor:pointer;color:blue">Already have account? Login</p>
+<p onclick="showLogin()" style="cursor:pointer;color:blue">Login</p>
 </div>
 
-<!-- LOGIN -->
 <div id="loginPage" style="display:none">
 <h3>Login</h3>
-<input id="loginUsername" placeholder="Username">
-<input id="loginPassword" type="password" placeholder="Password">
+<input id="loginUsername">
+<input id="loginPassword" type="password">
 <button onclick="login()">Login</button>
-
-<p onclick="showSignup()" style="cursor:pointer;color:blue">New user? Signup</p>
+<p onclick="showSignup()" style="cursor:pointer;color:blue">Signup</p>
 </div>
 
-<!-- APP -->
 <div id="appPage" style="display:none">
 
 <div class="chat-box" id="chat"></div>
 
-<input id="product" placeholder="Product">
-<input id="audience" placeholder="Audience">
+<input id="product">
+<input id="audience">
 
 <select id="platform">
 <option>Instagram</option>
@@ -119,13 +110,11 @@ function showSignup(){
     loginPage.style.display="none";
     appPage.style.display="none";
 }
-
 function showLogin(){
     signupPage.style.display="none";
     loginPage.style.display="block";
     appPage.style.display="none";
 }
-
 function showApp(){
     signupPage.style.display="none";
     loginPage.style.display="none";
@@ -143,7 +132,6 @@ async function signup(){
             confirm_password:confirmPassword.value
         })
     });
-
     const d = await res.json();
     alert(d.message || d.error);
 }
@@ -213,15 +201,40 @@ function copyText(){
     alert("Copied!");
 }
 
-// =================== PDF
+// =================== ✅ FIXED PDF FUNCTION
 function downloadPDF(){
-    const element=document.createElement("div");
-    element.innerText=lastResponse;
+
+    if(!lastResponse){
+        alert("Generate content first");
+        return;
+    }
+
+    const element = document.createElement("div");
+
+    // 🔥 IMPORTANT: use innerHTML + styling
+    element.innerHTML = `
+        <div style="padding:20px;font-family:Arial;">
+            <h2>AI Marketing Plan</h2>
+            <pre style="white-space:pre-wrap;font-size:12px;">
+${lastResponse}
+            </pre>
+        </div>
+    `;
+
     document.body.appendChild(element);
 
-    html2pdf().from(element).save("marketing-plan.pdf");
-
-    setTimeout(()=>document.body.removeChild(element),1000);
+    html2pdf()
+        .set({
+            margin:10,
+            filename:"marketing-plan.pdf",
+            html2canvas:{ scale:2 },
+            jsPDF:{ unit:"mm", format:"a4", orientation:"portrait" }
+        })
+        .from(element)
+        .save()
+        .then(()=>{
+            document.body.removeChild(element);
+        });
 }
 
 // =================== LOGOUT
