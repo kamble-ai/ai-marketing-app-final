@@ -11,44 +11,30 @@ body {
     text-align:center;
 }
 
-/* MAIN BOX */
+/* CARD */
 .box {
     background:white;
     color:black;
     padding:30px;
     border-radius:14px;
-    max-width:500px;
-    margin:auto;
-    transition:0.4s;
+    max-width:700px;
+    margin:20px auto;
 }
 
 /* INPUT */
-input {
+input, select {
     width:90%;
     padding:12px;
-    margin:12px;
+    margin:10px;
     border-radius:8px;
     border:2px solid #ccc;
     outline:none;
     transition:0.3s;
-    font-size:14px;
 }
 
-/* GLOW EFFECT */
 input:focus {
     border-color:#22c55e;
-    box-shadow:0 0 10px #22c55e, 0 0 20px rgba(34,197,94,0.5);
-    transform:scale(1.02);
-}
-
-/* TYPING EFFECT */
-input.typing {
-    animation: typingEffect 0.2s ease;
-}
-@keyframes typingEffect {
-    0% { transform:scale(1); }
-    50% { transform:scale(1.05); }
-    100% { transform:scale(1); }
+    box-shadow:0 0 10px #22c55e;
 }
 
 /* BUTTON */
@@ -60,43 +46,10 @@ button {
     border:none;
     border-radius:8px;
     cursor:pointer;
-    transition:0.2s;
 }
 
-button:active {
-    transform:scale(0.92);
-    box-shadow:0 0 15px #22c55e;
-}
-
-button:hover {
-    background:#16a34a;
-    box-shadow:0 0 10px #22c55e;
-}
-
-/* LINKS */
-p {
-    cursor:pointer;
-    color:#2563eb;
-    transition:0.2s;
-}
-p:hover {
-    color:#1d4ed8;
-    text-decoration:underline;
-}
-
-/* PAGE ANIMATION */
-.page {
-    animation: fadeSlide 0.4s ease;
-}
-@keyframes fadeSlide {
-    from {
-        opacity:0;
-        transform:translateY(20px);
-    }
-    to {
-        opacity:1;
-        transform:translateY(0);
-    }
+.hidden {
+    display:none;
 }
 </style>
 
@@ -106,123 +59,135 @@ p:hover {
 
 <h2>🚀 AI Marketing Generator</h2>
 
-<div class="box">
-
-<!-- SIGNUP -->
-<div id="signupPage" class="page">
-<h3>Signup</h3>
-<input id="signupUsername" placeholder="Username">
-<input id="signupPassword" type="password" placeholder="Password">
-<input id="confirmPassword" type="password" placeholder="Confirm Password">
-<button onclick="signup()">Signup</button>
-<p onclick="showLogin()">Already have account? Login</p>
-</div>
-
 <!-- LOGIN -->
-<div id="loginPage" style="display:none">
+<div id="loginPage" class="box">
 <h3>Login</h3>
 <input id="loginUsername" placeholder="Username">
 <input id="loginPassword" type="password" placeholder="Password">
 <button onclick="login()">Login</button>
-<p onclick="showSignup()">New user? Signup</p>
+<p id="loginMsg"></p>
 </div>
 
-<!-- APP -->
-<div id="appPage" style="display:none">
-<h3>Welcome 🚀</h3>
+<!-- MAIN APP -->
+<div id="appPage" class="hidden">
+
+<div class="box">
+<h3>Welcome 🎉</h3>
 <button onclick="logout()">Logout</button>
 </div>
+
+<div class="box">
+<h3>Generate Marketing Plan</h3>
+
+<input id="product" placeholder="Product (e.g. Gym Membership)">
+<input id="audience" placeholder="Target Audience">
+<select id="platform">
+<option>Instagram</option>
+<option>LinkedIn</option>
+<option>YouTube</option>
+</select>
+
+<button onclick="generate()">Generate</button>
+</div>
+
+<div id="result" class="box hidden"></div>
 
 </div>
 
 <script>
 
-// ================= INPUT TYPING EFFECT
-document.querySelectorAll("input").forEach(input=>{
-    input.addEventListener("input", ()=>{
-        input.classList.add("typing");
-        setTimeout(()=>input.classList.remove("typing"), 200);
-    });
-});
+// ✅ CHECK LOGIN ON LOAD
+window.onload = function(){
+    const token = localStorage.getItem("token");
 
-// ================= PAGE ANIMATION
-function applyPageAnimation(pageId){
-    const page = document.getElementById(pageId);
-    page.classList.remove("page");
-    void page.offsetWidth;
-    page.classList.add("page");
-}
-
-// ================= SWITCH PAGES
-function showSignup(){
-    signupPage.style.display="block";
-    loginPage.style.display="none";
-    appPage.style.display="none";
-    applyPageAnimation("signupPage");
-}
-
-function showLogin(){
-    signupPage.style.display="none";
-    loginPage.style.display="block";
-    appPage.style.display="none";
-    applyPageAnimation("loginPage");
-}
-
-function showApp(){
-    signupPage.style.display="none";
-    loginPage.style.display="none";
-    appPage.style.display="block";
-    applyPageAnimation("appPage");
-}
-
-// ================= SIGNUP
-async function signup(){
-    const res = await fetch("/signup",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-            username:signupUsername.value,
-            password:signupPassword.value,
-            confirm_password:confirmPassword.value
-        })
-    });
-
-    const d = await res.json();
-    alert(d.message || d.error);
-}
-
-// ================= LOGIN
-async function login(){
-    const res = await fetch("/login",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-            username:loginUsername.value,
-            password:loginPassword.value
-        })
-    });
-
-    const d = await res.json();
-
-    if(d.token){
-        localStorage.setItem("token", d.token);
+    if(token){
         showApp();
     } else {
-        alert(d.error);
+        showLogin();
     }
 }
 
-// ================= LOGOUT
-function logout(){
-    localStorage.removeItem("token");
-    location.reload();
+// SHOW LOGIN
+function showLogin(){
+    loginPage.classList.remove("hidden");
+    appPage.classList.add("hidden");
 }
 
-// ================= AUTO LOAD
-window.onload = ()=>{
-    const token = localStorage.getItem("token");
-    if(token) showApp();
-    else showSignup();
+// SHOW APP
+function showApp(){
+    loginPage.classList.add("hidden");
+    appPage.classList.remove("hidden");
+}
+
+// LOGIN
+async function login(){
+
+    const username = loginUsername.value;
+    const password = loginPassword.value;
+
+    if(!username || !password){
+        loginMsg.innerText = "Enter details";
+        return;
+    }
+
+    loginMsg.innerText = "Logging in...";
+
+    try {
+        const res = await fetch("/login",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({username,password})
+        });
+
+        const data = await res.json();
+
+        if(data.token){
+            localStorage.setItem("token", data.token);
+            showApp(); // ✅ DIRECT SWITCH (NO RELOAD)
+        } else {
+            loginMsg.innerText = "Invalid login";
+        }
+
+    } catch(err){
+        loginMsg.innerText = "Server error";
+        console.log(err);
+    }
+}
+
+// LOGOUT
+function logout(){
+    localStorage.removeItem("token");
+    showLogin();
+}
+
+// GENERATE
+async function generate(){
+
+    const product = document.getElementById("product").value;
+    const audience = document.getElementById("audience").value;
+    const platform = document.getElementById("platform").value;
+
+    result.classList.remove("hidden");
+    result.innerHTML = "🤖 AI is thinking...";
+
+    try {
+
+        const res = await fetch("/generate",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json",
+                "Authorization":"Bearer " + localStorage.getItem("token")
+            },
+            body:JSON.stringify({product,audience,platform})
+        });
+
+        const data = await res.json();
+
+        result.innerHTML = "<pre>"+JSON.stringify(data,null,2)+"</pre>";
+
+    } catch(err){
+        result.innerHTML = "Error generating";
+    }
 }
 
 </script>
