@@ -13,44 +13,41 @@ body {
     text-align:center;
 }
 
-/* MAIN BOX */
 .box {
     background:white;
     color:black;
     padding:20px;
     border-radius:10px;
-    max-width:600px;
+    max-width:700px;
     margin:auto;
 }
 
-/* CHAT BOX (FIXED) */
 .chat-box {
     background:#020617;
-    color:white;
     padding:15px;
     border-radius:10px;
     margin-bottom:10px;
-
-    /* 🔥 FIX */
-    min-height:150px;
-    overflow:visible;
-    display:flex;
-    flex-direction:column;
 }
 
-/* MESSAGE */
-.msg {
-    margin:10px;
-    padding:10px;
-    border-radius:8px;
-
-    /* 🔥 IMPORTANT */
-    white-space:pre-wrap;
-    word-wrap:break-word;
+/* CARD UI */
+.card {
+    background:#111827;
+    color:white;
+    padding:15px;
+    border-radius:10px;
+    margin:10px 0;
+    text-align:left;
 }
 
-.user { color:lightgreen; }
-.ai { color:white; }
+.card h3 {
+    text-align:center;
+    margin-bottom:10px;
+    color:#22c55e;
+}
+
+.card p {
+    margin:6px 0;
+}
 
 /* INPUT */
 input,select {
@@ -63,22 +60,22 @@ input,select {
 button {
     padding:10px;
     margin:5px;
-    background:green;
+    background:#16a34a;
     color:white;
     border:none;
     cursor:pointer;
 }
 
-/* 🔥 TYPING DOTS */
+/* LOADING */
 .typing::after {
     content: '...';
     animation: blink 1s infinite;
 }
 
 @keyframes blink {
-    0% { opacity:0 }
-    50% { opacity:1 }
-    100% { opacity:0 }
+    0% {opacity:0}
+    50% {opacity:1}
+    100% {opacity:0}
 }
 </style>
 </head>
@@ -89,7 +86,7 @@ button {
 
 <div class="box">
 
-<!-- SIGNUP -->
+<!-- AUTH -->
 <div id="signupPage">
 <h3>Signup</h3>
 <input id="signupUsername" placeholder="Username">
@@ -99,7 +96,6 @@ button {
 <p onclick="showLogin()" style="cursor:pointer;color:blue">Login</p>
 </div>
 
-<!-- LOGIN -->
 <div id="loginPage" style="display:none">
 <h3>Login</h3>
 <input id="loginUsername">
@@ -111,7 +107,7 @@ button {
 <!-- APP -->
 <div id="appPage" style="display:none">
 
-<div class="chat-box" id="chat"></div>
+<div id="chat" class="chat-box"></div>
 
 <input id="product" placeholder="Product">
 <input id="audience" placeholder="Audience">
@@ -154,7 +150,7 @@ function showApp(){
     appPage.style.display="block";
 }
 
-// SIGNUP
+// AUTH
 async function signup(){
     const res = await fetch("/signup",{
         method:"POST",
@@ -169,7 +165,6 @@ async function signup(){
     alert(d.message || d.error);
 }
 
-// LOGIN
 async function login(){
     const res = await fetch("/login",{
         method:"POST",
@@ -190,23 +185,46 @@ async function login(){
     }
 }
 
-// ADD MESSAGE
-function addMessage(text, type, className=""){
-    const div = document.createElement("div");
-    div.className="msg "+type+" "+className;
-    div.innerText=text;
-    chat.appendChild(div);
-    return div;
+// 🔥 FORMAT INTO CARDS
+function formatToCards(text){
+
+    const sections = text.split(/\d+\./).filter(s=>s.trim());
+
+    const titles = [
+        "Strategy",
+        "Growth Plan",
+        "Do's & Don'ts",
+        "Captions",
+        "Hashtags",
+        "CTA"
+    ];
+
+    let html = "";
+
+    sections.forEach((sec,i)=>{
+        const lines = sec.trim().split("\n").filter(l=>l.trim());
+
+        html += `<div class="card">`;
+        html += `<h3>${titles[i] || "Section"}</h3>`;
+
+        lines.forEach(line=>{
+            html += `<p>• ${line}</p>`;
+        });
+
+        html += `</div>`;
+    });
+
+    return html;
 }
 
 // TYPEWRITER
-function typeWriter(element, text, speed=15){
+function typeWriterHTML(element, html, speed=5){
     let i = 0;
-    element.innerText = "";
+    element.innerHTML = "";
 
     function typing(){
-        if(i < text.length){
-            element.innerText += text.charAt(i);
+        if(i < html.length){
+            element.innerHTML += html.charAt(i);
             i++;
             setTimeout(typing, speed);
         }
@@ -215,20 +233,22 @@ function typeWriter(element, text, speed=15){
     typing();
 }
 
-// GENERATE (FIXED)
+// GENERATE
 async function generate(){
 
     const token = localStorage.getItem("token");
 
     if(!token){
-        alert("Please login first");
+        alert("Login first");
         return;
     }
 
-    // 🔥 CLEAR OLD DATA
     chat.innerHTML = "";
 
-    const loading = addMessage("AI is thinking", "ai", "typing");
+    const loading = document.createElement("div");
+    loading.className="typing";
+    loading.innerText="AI generating";
+    chat.appendChild(loading);
 
     try{
         const res = await fetch("/generate",{
@@ -251,15 +271,19 @@ async function generate(){
         if(d.campaign){
             lastResponse = d.campaign;
 
-            const msg = addMessage("", "ai");
-            typeWriter(msg, d.campaign);
-        } else {
-            addMessage("❌ Error","ai");
+            const html = formatToCards(d.campaign);
+
+            const div = document.createElement("div");
+            chat.appendChild(div);
+
+            typeWriterHTML(div, html); // 🔥 typing cards
+
+        }else{
+            chat.innerHTML="❌ Error";
         }
 
     }catch(err){
-        loading.remove();
-        addMessage("❌ Server error","ai");
+        chat.innerHTML="❌ Server error";
     }
 }
 
@@ -273,32 +297,19 @@ function copyText(){
 function downloadPDF(){
 
     if(!lastResponse){
-        alert("Generate content first");
+        alert("Generate first");
         return;
     }
 
     const element = document.createElement("div");
-
-    element.style.position = "fixed";
-    element.style.left = "-9999px";
-    element.style.width = "800px";
-    element.style.background = "white";
-    element.style.color = "black";
-    element.style.padding = "20px";
-
-    element.innerHTML = `
-        <h2 style="text-align:center;">AI Marketing Plan</h2>
-        <div style="white-space: pre-wrap;">
-            ${lastResponse}
-        </div>
-    `;
+    element.innerHTML = formatToCards(lastResponse);
 
     document.body.appendChild(element);
 
-    setTimeout(() => {
+    setTimeout(()=>{
         html2pdf().from(element).save("marketing-plan.pdf")
-        .then(()=> document.body.removeChild(element));
-    }, 300);
+        .then(()=>document.body.removeChild(element));
+    },300);
 }
 
 // LOGOUT
