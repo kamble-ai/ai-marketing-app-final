@@ -22,11 +22,19 @@ body {
     margin:auto;
 }
 
+/* CHAT */
 .chat-box {
     background:#020617;
     padding:15px;
     border-radius:10px;
     margin-bottom:10px;
+}
+
+/* MESSAGE */
+.msg {
+    margin:10px;
+    padding:10px;
+    border-radius:8px;
 }
 
 /* CARD UI */
@@ -41,7 +49,6 @@ body {
 
 .card h3 {
     text-align:center;
-    margin-bottom:10px;
     color:#22c55e;
 }
 
@@ -65,18 +72,6 @@ button {
     border:none;
     cursor:pointer;
 }
-
-/* LOADING */
-.typing::after {
-    content: '...';
-    animation: blink 1s infinite;
-}
-
-@keyframes blink {
-    0% {opacity:0}
-    50% {opacity:1}
-    100% {opacity:0}
-}
 </style>
 </head>
 
@@ -86,7 +81,7 @@ button {
 
 <div class="box">
 
-<!-- AUTH -->
+<!-- SIGNUP -->
 <div id="signupPage">
 <h3>Signup</h3>
 <input id="signupUsername" placeholder="Username">
@@ -96,6 +91,7 @@ button {
 <p onclick="showLogin()" style="cursor:pointer;color:blue">Login</p>
 </div>
 
+<!-- LOGIN -->
 <div id="loginPage" style="display:none">
 <h3>Login</h3>
 <input id="loginUsername">
@@ -185,7 +181,21 @@ async function login(){
     }
 }
 
-// 🔥 FORMAT INTO CARDS
+// 🔥 ADD MESSAGE FIXED
+function addMessage(text, type, isHTML=false){
+    const div = document.createElement("div");
+    div.className = "msg " + type;
+
+    if(isHTML){
+        div.innerHTML = text;  // ✅ FIX
+    } else {
+        div.innerText = text;
+    }
+
+    chat.appendChild(div);
+}
+
+// 🔥 FORMAT CARDS
 function formatToCards(text){
 
     const sections = text.split(/\d+\./).filter(s=>s.trim());
@@ -217,73 +227,39 @@ function formatToCards(text){
     return html;
 }
 
-// TYPEWRITER
-function typeWriterHTML(element, html, speed=5){
-    let i = 0;
-    element.innerHTML = "";
-
-    function typing(){
-        if(i < html.length){
-            element.innerHTML += html.charAt(i);
-            i++;
-            setTimeout(typing, speed);
-        }
-    }
-
-    typing();
-}
-
 // GENERATE
 async function generate(){
 
     const token = localStorage.getItem("token");
 
-    if(!token){
-        alert("Login first");
-        return;
-    }
+    chat.innerHTML = ""; // clear
+
+    addMessage("Generating...","ai");
+
+    const res = await fetch("/generate",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json",
+            "Authorization":"Bearer "+token
+        },
+        body:JSON.stringify({
+            product:product.value,
+            audience:audience.value,
+            platform:platform.value
+        })
+    });
+
+    const d = await res.json();
 
     chat.innerHTML = "";
 
-    const loading = document.createElement("div");
-    loading.className="typing";
-    loading.innerText="AI generating";
-    chat.appendChild(loading);
+    if(d.campaign){
+        lastResponse = d.campaign;
 
-    try{
-        const res = await fetch("/generate",{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json",
-                "Authorization":"Bearer "+token
-            },
-            body:JSON.stringify({
-                product:product.value,
-                audience:audience.value,
-                platform:platform.value
-            })
-        });
-
-        const d = await res.json();
-
-        loading.remove();
-
-        if(d.campaign){
-            lastResponse = d.campaign;
-
-            const html = formatToCards(d.campaign);
-
-            const div = document.createElement("div");
-            chat.appendChild(div);
-
-            typeWriterHTML(div, html); // 🔥 typing cards
-
-        }else{
-            chat.innerHTML="❌ Error";
-        }
-
-    }catch(err){
-        chat.innerHTML="❌ Server error";
+        const formatted = formatToCards(d.campaign);
+        addMessage(formatted, "ai", true); // 🔥 FIX
+    }else{
+        addMessage("❌ Error","ai");
     }
 }
 
@@ -295,12 +271,6 @@ function copyText(){
 
 // PDF
 function downloadPDF(){
-
-    if(!lastResponse){
-        alert("Generate first");
-        return;
-    }
-
     const element = document.createElement("div");
     element.innerHTML = formatToCards(lastResponse);
 
