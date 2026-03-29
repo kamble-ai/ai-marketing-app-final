@@ -13,35 +13,53 @@ body {
     text-align:center;
 }
 
+/* MAIN BOX */
 .box {
     background:white;
     color:black;
     padding:20px;
     border-radius:10px;
-    max-width:500px;
+    max-width:600px;
     margin:auto;
 }
 
+/* CHAT BOX (FIXED) */
 .chat-box {
     background:#020617;
     color:white;
-    height:250px;
-    overflow:auto;
-    padding:10px;
+    padding:15px;
     border-radius:10px;
     margin-bottom:10px;
+
+    /* 🔥 FIX */
+    min-height:150px;
+    overflow:visible;
+    display:flex;
+    flex-direction:column;
 }
 
-.msg { margin:10px; }
+/* MESSAGE */
+.msg {
+    margin:10px;
+    padding:10px;
+    border-radius:8px;
+
+    /* 🔥 IMPORTANT */
+    white-space:pre-wrap;
+    word-wrap:break-word;
+}
+
 .user { color:lightgreen; }
 .ai { color:white; }
 
+/* INPUT */
 input,select {
     width:90%;
     padding:10px;
     margin:10px;
 }
 
+/* BUTTON */
 button {
     padding:10px;
     margin:5px;
@@ -71,6 +89,7 @@ button {
 
 <div class="box">
 
+<!-- SIGNUP -->
 <div id="signupPage">
 <h3>Signup</h3>
 <input id="signupUsername" placeholder="Username">
@@ -80,6 +99,7 @@ button {
 <p onclick="showLogin()" style="cursor:pointer;color:blue">Login</p>
 </div>
 
+<!-- LOGIN -->
 <div id="loginPage" style="display:none">
 <h3>Login</h3>
 <input id="loginUsername">
@@ -88,6 +108,7 @@ button {
 <p onclick="showSignup()" style="cursor:pointer;color:blue">Signup</p>
 </div>
 
+<!-- APP -->
 <div id="appPage" style="display:none">
 
 <div class="chat-box" id="chat"></div>
@@ -178,7 +199,7 @@ function addMessage(text, type, className=""){
     return div;
 }
 
-// 🔥 TYPEWRITER EFFECT
+// TYPEWRITER
 function typeWriter(element, text, speed=15){
     let i = 0;
     element.innerText = "";
@@ -187,7 +208,6 @@ function typeWriter(element, text, speed=15){
         if(i < text.length){
             element.innerText += text.charAt(i);
             i++;
-            chat.scrollTop = chat.scrollHeight;
             setTimeout(typing, speed);
         }
     }
@@ -195,7 +215,7 @@ function typeWriter(element, text, speed=15){
     typing();
 }
 
-// GENERATE
+// GENERATE (FIXED)
 async function generate(){
 
     const token = localStorage.getItem("token");
@@ -205,9 +225,9 @@ async function generate(){
         return;
     }
 
+    // 🔥 CLEAR OLD DATA
     chat.innerHTML = "";
 
-    // typing loader
     const loading = addMessage("AI is thinking", "ai", "typing");
 
     try{
@@ -232,8 +252,7 @@ async function generate(){
             lastResponse = d.campaign;
 
             const msg = addMessage("", "ai");
-            typeWriter(msg, d.campaign); // 🔥 typing effect
-
+            typeWriter(msg, d.campaign);
         } else {
             addMessage("❌ Error","ai");
         }
