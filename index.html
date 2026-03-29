@@ -104,7 +104,7 @@ button {
 
 let lastResponse = "";
 
-// =================== PAGE SWITCH
+// PAGE SWITCH
 function showSignup(){
     signupPage.style.display="block";
     loginPage.style.display="none";
@@ -121,7 +121,7 @@ function showApp(){
     appPage.style.display="block";
 }
 
-// =================== SIGNUP
+// SIGNUP
 async function signup(){
     const res = await fetch("/signup",{
         method:"POST",
@@ -136,7 +136,7 @@ async function signup(){
     alert(d.message || d.error);
 }
 
-// =================== LOGIN
+// LOGIN
 async function login(){
     const res = await fetch("/login",{
         method:"POST",
@@ -157,7 +157,7 @@ async function login(){
     }
 }
 
-// =================== ADD MESSAGE
+// ADD MESSAGE
 function addMessage(text, type){
     const div = document.createElement("div");
     div.className="msg "+type;
@@ -165,7 +165,7 @@ function addMessage(text, type){
     chat.appendChild(div);
 }
 
-// =================== GENERATE
+// GENERATE
 async function generate(){
 
     const token = localStorage.getItem("token");
@@ -195,13 +195,13 @@ async function generate(){
     }
 }
 
-// =================== COPY
+// COPY
 function copyText(){
     navigator.clipboard.writeText(lastResponse);
     alert("Copied!");
 }
 
-// =================== ✅ FIXED PDF FUNCTION
+// ✅ FINAL FIXED PDF FUNCTION
 function downloadPDF(){
 
     if(!lastResponse){
@@ -211,19 +211,26 @@ function downloadPDF(){
 
     const element = document.createElement("div");
 
-    // 🔥 IMPORTANT: use innerHTML + styling
+    element.style.position = "fixed";
+    element.style.left = "-9999px";
+    element.style.top = "0";
+    element.style.width = "800px";
+    element.style.background = "white";
+    element.style.color = "black";
+    element.style.padding = "20px";
+
     element.innerHTML = `
-        <div style="padding:20px;font-family:Arial;">
-            <h2>AI Marketing Plan</h2>
-            <pre style="white-space:pre-wrap;font-size:12px;">
-${lastResponse}
-            </pre>
+        <h2 style="text-align:center;">AI Marketing Plan</h2>
+        <div style="white-space: pre-wrap; font-size:14px;">
+            ${lastResponse}
         </div>
     `;
 
     document.body.appendChild(element);
 
-    html2pdf()
+    // 🔥 WAIT FOR RENDER
+    setTimeout(() => {
+        html2pdf()
         .set({
             margin:10,
             filename:"marketing-plan.pdf",
@@ -235,15 +242,16 @@ ${lastResponse}
         .then(()=>{
             document.body.removeChild(element);
         });
+    }, 300);
 }
 
-// =================== LOGOUT
+// LOGOUT
 function logout(){
     localStorage.removeItem("token");
     location.reload();
 }
 
-// =================== AUTO LOAD
+// AUTO LOAD
 window.onload = ()=>{
     const token = localStorage.getItem("token");
     if(token) showApp();
