@@ -59,6 +59,7 @@ button {
 
 <div class="box">
 
+<!-- SIGNUP -->
 <div id="signupPage">
 <h3>Signup</h3>
 <input id="signupUsername" placeholder="Username">
@@ -68,6 +69,7 @@ button {
 <p onclick="showLogin()" style="cursor:pointer;color:blue">Login</p>
 </div>
 
+<!-- LOGIN -->
 <div id="loginPage" style="display:none">
 <h3>Login</h3>
 <input id="loginUsername">
@@ -76,12 +78,13 @@ button {
 <p onclick="showSignup()" style="cursor:pointer;color:blue">Signup</p>
 </div>
 
+<!-- APP -->
 <div id="appPage" style="display:none">
 
 <div class="chat-box" id="chat"></div>
 
-<input id="product">
-<input id="audience">
+<input id="product" placeholder="Product">
+<input id="audience" placeholder="Audience">
 
 <select id="platform">
 <option>Instagram</option>
@@ -104,7 +107,7 @@ button {
 
 let lastResponse = "";
 
-// PAGE SWITCH
+// =================== PAGE SWITCH
 function showSignup(){
     signupPage.style.display="block";
     loginPage.style.display="none";
@@ -121,7 +124,7 @@ function showApp(){
     appPage.style.display="block";
 }
 
-// SIGNUP
+// =================== SIGNUP
 async function signup(){
     const res = await fetch("/signup",{
         method:"POST",
@@ -136,7 +139,7 @@ async function signup(){
     alert(d.message || d.error);
 }
 
-// LOGIN
+// =================== LOGIN
 async function login(){
     const res = await fetch("/login",{
         method:"POST",
@@ -157,7 +160,7 @@ async function login(){
     }
 }
 
-// ADD MESSAGE
+// =================== ADD MESSAGE
 function addMessage(text, type){
     const div = document.createElement("div");
     div.className="msg "+type;
@@ -165,43 +168,59 @@ function addMessage(text, type){
     chat.appendChild(div);
 }
 
-// GENERATE
+// =================== GENERATE (FIXED)
 async function generate(){
 
     const token = localStorage.getItem("token");
 
+    if(!token){
+        alert("Please login first");
+        return;
+    }
+
+    // ✅ CLEAR OLD RESULT
+    chat.innerHTML = "";
+
     addMessage("Generating...","ai");
 
-    const res = await fetch("/generate",{
-        method:"POST",
-        headers:{
-            "Content-Type":"application/json",
-            "Authorization":"Bearer "+token
-        },
-        body:JSON.stringify({
-            product:product.value,
-            audience:audience.value,
-            platform:platform.value
-        })
-    });
+    try{
+        const res = await fetch("/generate",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json",
+                "Authorization":"Bearer "+token
+            },
+            body:JSON.stringify({
+                product:product.value,
+                audience:audience.value,
+                platform:platform.value
+            })
+        });
 
-    const d = await res.json();
+        const d = await res.json();
 
-    if(d.campaign){
-        lastResponse = d.campaign;
-        addMessage(d.campaign,"ai");
-    }else{
-        addMessage("❌ Error","ai");
+        if(d.campaign){
+            lastResponse = d.campaign;
+            chat.innerHTML = ""; // remove loading
+            addMessage(d.campaign,"ai");
+        }else{
+            chat.innerHTML = "";
+            addMessage("❌ Error","ai");
+        }
+
+    }catch(err){
+        chat.innerHTML = "";
+        addMessage("❌ Server error","ai");
     }
 }
 
-// COPY
+// =================== COPY
 function copyText(){
     navigator.clipboard.writeText(lastResponse);
     alert("Copied!");
 }
 
-// ✅ FINAL FIXED PDF FUNCTION
+// =================== PDF (FINAL FIX)
 function downloadPDF(){
 
     if(!lastResponse){
@@ -213,7 +232,6 @@ function downloadPDF(){
 
     element.style.position = "fixed";
     element.style.left = "-9999px";
-    element.style.top = "0";
     element.style.width = "800px";
     element.style.background = "white";
     element.style.color = "black";
@@ -228,14 +246,13 @@ function downloadPDF(){
 
     document.body.appendChild(element);
 
-    // 🔥 WAIT FOR RENDER
     setTimeout(() => {
         html2pdf()
         .set({
             margin:10,
             filename:"marketing-plan.pdf",
             html2canvas:{ scale:2 },
-            jsPDF:{ unit:"mm", format:"a4", orientation:"portrait" }
+            jsPDF:{ unit:"mm", format:"a4" }
         })
         .from(element)
         .save()
@@ -245,13 +262,13 @@ function downloadPDF(){
     }, 300);
 }
 
-// LOGOUT
+// =================== LOGOUT
 function logout(){
     localStorage.removeItem("token");
     location.reload();
 }
 
-// AUTO LOAD
+// =================== AUTO LOAD
 window.onload = ()=>{
     const token = localStorage.getItem("token");
     if(token) showApp();
