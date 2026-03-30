@@ -3,6 +3,8 @@
 <head>
 <title>AI Marketing Generator</title>
 
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
@@ -15,20 +17,34 @@ body {
     font-family: 'Segoe UI';
     background:#0f172a;
     color:white;
-    text-align:center;
     margin:0;
     padding:10px;
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+
+    min-height:100vh;
 }
 
-/* MAIN BOX */
+/* HEADER */
+h2 {
+    margin:15px 0;
+}
+
+/* MAIN CONTAINER */
 .box {
     background:white;
     color:black;
     padding:20px;
     border-radius:12px;
+
     width:100%;
     max-width:900px;
+
     margin:10px auto;
+
+    box-shadow:0 10px 25px rgba(0,0,0,0.4);
 }
 
 /* CHAT */
@@ -37,7 +53,6 @@ body {
     padding:15px;
     border-radius:12px;
     margin-bottom:15px;
-    overflow:hidden;
 }
 
 /* CARD */
@@ -46,7 +61,6 @@ body {
     padding:15px;
     margin:12px 0;
     border-radius:12px;
-    text-align:left;
     width:100%;
 }
 
@@ -74,7 +88,7 @@ body {
     100%{opacity:0.3}
 }
 
-/* INPUTS */
+/* INPUT */
 input,select {
     width:100%;
     padding:12px;
@@ -84,12 +98,12 @@ input,select {
     font-size:14px;
 }
 
-/* BUTTONS CONTAINER */
+/* BUTTON GROUP */
 .btn-group {
     display:flex;
     flex-wrap:wrap;
-    justify-content:center;
     gap:10px;
+    justify-content:center;
 }
 
 /* BUTTON */
@@ -103,17 +117,17 @@ button {
     flex:1 1 120px;
 }
 
-/* LINKS */
+/* LINK */
 p[onclick] {
     color:#2563eb;
-    font-size:14px;
+    cursor:pointer;
 }
 
-/* MOBILE OPTIMIZATION */
+/* MOBILE FIX */
 @media (max-width:600px){
 
     body {
-        padding:5px;
+        padding:10px;
     }
 
     .box {
@@ -121,27 +135,17 @@ p[onclick] {
         border-radius:10px;
     }
 
-    .chat-box {
-        padding:10px;
-    }
-
-    .card {
-        padding:12px;
+    h2 {
+        font-size:18px;
     }
 
     .card p {
         font-size:14px;
     }
 
-    h2 {
-        font-size:18px;
-    }
-
     button {
         font-size:13px;
-        padding:10px;
     }
-
 }
 
 </style>
@@ -153,23 +157,26 @@ p[onclick] {
 
 <div class="box">
 
+<!-- SIGNUP -->
 <div id="signupPage">
 <h3>Signup</h3>
 <input id="signupUsername" placeholder="Username">
 <input id="signupPassword" type="password" placeholder="Password">
 <input id="confirmPassword" type="password" placeholder="Confirm Password">
 <button onclick="signup()">Signup</button>
-<p onclick="showLogin()" style="cursor:pointer">Login</p>
+<p onclick="showLogin()">Login</p>
 </div>
 
+<!-- LOGIN -->
 <div id="loginPage" style="display:none">
 <h3>Login</h3>
 <input id="loginUsername" placeholder="Username">
 <input id="loginPassword" type="password" placeholder="Password">
 <button onclick="login()">Login</button>
-<p onclick="showSignup()" style="cursor:pointer">Signup</p>
+<p onclick="showSignup()">Signup</p>
 </div>
 
+<!-- APP -->
 <div id="appPage" style="display:none">
 
 <div id="chat" class="chat-box"></div>
@@ -240,7 +247,7 @@ async function login(){
     }
 }
 
-// ================= FORMAT (UNCHANGED)
+// ================= FORMAT
 function formatToCards(text){
 
     text = text.replace(/\*/g,"");
