@@ -6,50 +6,60 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
+
+* {
+    box-sizing: border-box;
+}
+
 body {
     font-family: 'Segoe UI';
     background:#0f172a;
     color:white;
     text-align:center;
+    margin:0;
+    padding:10px;
 }
 
+/* MAIN BOX */
 .box {
     background:white;
     color:black;
     padding:20px;
     border-radius:12px;
+    width:100%;
     max-width:900px;
-    margin:auto;
+    margin:10px auto;
 }
 
+/* CHAT */
 .chat-box {
     background:#020617;
-    padding:20px;
+    padding:15px;
     border-radius:12px;
     margin-bottom:15px;
     overflow:hidden;
 }
 
-/* CARD FIX */
+/* CARD */
 .card {
     background:#1e293b;
-    padding:20px;
-    margin:15px 0;
+    padding:15px;
+    margin:12px 0;
     border-radius:12px;
     text-align:left;
     width:100%;
-    box-sizing:border-box;
 }
 
 .card h3 {
     color:#22c55e;
+    margin-bottom:8px;
 }
 
 .card p {
     color:#e2e8f0;
     line-height:1.6;
-    font-size:14px;
-    word-wrap:break-word;
+    font-size:15px;
+    word-break:break-word;
 }
 
 /* LOADER */
@@ -64,20 +74,76 @@ body {
     100%{opacity:0.3}
 }
 
+/* INPUTS */
 input,select {
-    width:90%;
-    padding:10px;
-    margin:10px;
+    width:100%;
+    padding:12px;
+    margin:8px 0;
+    border-radius:8px;
+    border:1px solid #ccc;
+    font-size:14px;
 }
 
+/* BUTTONS CONTAINER */
+.btn-group {
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:10px;
+}
+
+/* BUTTON */
 button {
-    padding:10px;
-    margin:5px;
+    padding:10px 14px;
     background:green;
     color:white;
     border:none;
+    border-radius:8px;
     cursor:pointer;
+    flex:1 1 120px;
 }
+
+/* LINKS */
+p[onclick] {
+    color:#2563eb;
+    font-size:14px;
+}
+
+/* MOBILE OPTIMIZATION */
+@media (max-width:600px){
+
+    body {
+        padding:5px;
+    }
+
+    .box {
+        padding:15px;
+        border-radius:10px;
+    }
+
+    .chat-box {
+        padding:10px;
+    }
+
+    .card {
+        padding:12px;
+    }
+
+    .card p {
+        font-size:14px;
+    }
+
+    h2 {
+        font-size:18px;
+    }
+
+    button {
+        font-size:13px;
+        padding:10px;
+    }
+
+}
+
 </style>
 </head>
 
@@ -89,19 +155,19 @@ button {
 
 <div id="signupPage">
 <h3>Signup</h3>
-<input id="signupUsername">
-<input id="signupPassword" type="password">
-<input id="confirmPassword" type="password">
+<input id="signupUsername" placeholder="Username">
+<input id="signupPassword" type="password" placeholder="Password">
+<input id="confirmPassword" type="password" placeholder="Confirm Password">
 <button onclick="signup()">Signup</button>
-<p onclick="showLogin()" style="cursor:pointer;color:blue">Login</p>
+<p onclick="showLogin()" style="cursor:pointer">Login</p>
 </div>
 
 <div id="loginPage" style="display:none">
 <h3>Login</h3>
-<input id="loginUsername">
-<input id="loginPassword" type="password">
+<input id="loginUsername" placeholder="Username">
+<input id="loginPassword" type="password" placeholder="Password">
 <button onclick="login()">Login</button>
-<p onclick="showSignup()" style="cursor:pointer;color:blue">Signup</p>
+<p onclick="showSignup()" style="cursor:pointer">Signup</p>
 </div>
 
 <div id="appPage" style="display:none">
@@ -119,10 +185,12 @@ button {
 <option>YouTube Long</option>
 </select>
 
+<div class="btn-group">
 <button onclick="generate()">Generate</button>
 <button onclick="copyText()">Copy</button>
 <button onclick="downloadPDF()">PDF</button>
 <button onclick="logout()">Logout</button>
+</div>
 
 </div>
 </div>
@@ -172,10 +240,9 @@ async function login(){
     }
 }
 
-// ================= 🔥 FINAL PARSER
+// ================= FORMAT (UNCHANGED)
 function formatToCards(text){
 
-    // REMOVE ALL *
     text = text.replace(/\*/g,"");
 
     const sections = {
@@ -197,7 +264,6 @@ function formatToCards(text){
 
         let lower = l.toLowerCase();
 
-        // STRICT SECTION LOCK
         if(lower.includes("strategy")) { current="strategy"; return; }
         if(lower.includes("growth")) { current="growth"; return; }
         if(lower.includes("do's") || lower === "do") { current="do"; return; }
@@ -206,7 +272,6 @@ function formatToCards(text){
         if(lower.includes("hashtag")) { current="hashtags"; return; }
         if(lower.includes("cta") || lower.includes("call to action")) { current="cta"; return; }
 
-        // HASHTAG DETECTION (ANYWHERE)
         if(current === "hashtags"){
             let tags = l.match(/#\w+/g);
             if(tags){
@@ -215,7 +280,6 @@ function formatToCards(text){
             return;
         }
 
-        // STORE
         if(current){
             sections[current].push(l);
         }
